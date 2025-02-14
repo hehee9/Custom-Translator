@@ -1,0 +1,335 @@
+/* popup/popup.css */
+
+/* 기본 스타일 */
+body {
+    margin: 0;
+    padding: 0;
+    font-family: sans-serif;
+}
+
+/* 전체 컨테이너 */
+.container {
+    width: 350px;
+    padding: 0;
+    margin: 0;
+    box-sizing: border-box;
+    overflow: hidden;
+}
+
+/* 네비게이션 바 */
+.popup-nav {
+    display: flex;
+    border-bottom: 2px solid #3ab1f4;
+    margin: 0;
+    padding: 0;
+    width: 100%;
+}
+
+/* 네비게이션 버튼 */
+.nav-btn {
+    flex: 1;
+    padding: 3px 0;
+    background-color: transparent;
+    color: #3ab1f4;
+    border: none;
+    cursor: pointer;
+    font-size: 14px;
+}
+.nav-btn.active {
+    background-color: #3ab1f4;
+    color: #fff;
+    font-weight: 500;
+}
+
+/* 섹션 */
+.settings-section {
+    display: none;
+    padding: 10px;
+}
+.settings-section.active {
+    display: block;
+}
+
+/* API 키 행 */
+.api-key-row {
+    display: flex;
+    align-items: center;
+}
+.api-key-row input {
+    width: 240px;
+    padding: 6px 8px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+}
+.api-key-row button {
+    width: 90px;  
+    padding: 6px 12px;
+    background-color: #3ab1f4;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+}
+#apiKey {
+    flex: 1;
+    padding: 6px;
+    font-size: 14px;
+}
+#saveApiKey {
+    padding: 6px;
+    background-color: #3ab1f4;
+    color: #fff;
+    border: none;
+    cursor: pointer;
+    font-size: 14px;
+    margin-left: 5px;
+}
+
+/* API KEY 발급 버튼 */
+.api-issue-btn {
+    padding: 6px;
+    background-color: #3ab1f4;
+    color: #fff;
+    border: none;
+    cursor: pointer;
+    font-size: 14px;
+    width: 100%;
+    margin-bottom: 2px;
+}
+.api-warning {
+    color: #dc3545;
+    font-size: 12px;
+    margin: 0 0 15px 0;
+}
+
+/* 사용량 행 및 그래프 */
+.usage-row {
+    display: flex;
+    align-items: center;
+    margin-top: 10px;
+    font-size: 12px;
+}
+.usage-row span {
+    font-size: 12px;
+    margin-right: 5px;
+}
+.usage-graph-container {
+    flex: 1;
+    background-color: #eee;
+    height: 8px;
+    border-radius: 4px;
+    margin-left: 10px;
+    overflow: hidden;
+}
+.usage-graph {
+    height: 100%;
+    background-color: #3ab1f4;
+    width: 0;
+    transition: width 0.3s ease;
+}
+
+/* 단어장 관련 스타일 */
+.small-action-btn {
+    flex: 1;
+    padding: 2px 8px;
+    background-color: #555;
+    color: #fff;
+    border: none;
+    border-radius: 13px;
+    cursor: pointer;
+    font-size: 13px;
+}
+
+/* 단어장 추가 버튼 */
+#addWord {
+    padding: 6px 8px;
+    height: 28px;
+    background-color: #3ab1f4;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    white-space: nowrap;
+    line-height: 20px;
+}
+
+/* 단어장 정렬 */
+.glossary-sort {
+    display: flex;
+    justify-content: flex-end;
+}
+#sortOrder {
+    width: 90px;
+    padding: 4px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    font-size: 12px;
+}
+
+/* 단어장 목록 */
+.glossary-actions-top {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 15px;
+}
+
+.glossary-top {
+    margin-bottom: 10px;
+}
+
+/* 단어장 검색 */
+.glossary-filter {
+    display: flex;
+    align-items: center;
+    width: 100%;
+    margin-bottom: 8px;
+}
+#searchGlossary {
+    flex: 1;
+    padding: 4px 8px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    font-size: 12px;
+    margin-right: 8px;
+}
+
+/* 단어장 목록 */
+.glossary-list {
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    padding: 5px;
+    margin-bottom: 0px;
+    transition: all 0.3s ease;
+    overflow-y: auto;
+    background: white;
+}
+.glossary-list.visible {
+    display: block;
+}
+
+/* 단어장 아이템 */
+.glossary-item {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    margin-bottom: 4px;
+}
+.glossary-item button {
+    height: 28px;
+    padding: 0 12px;
+    background-color: #dc3545;
+    color: #fff;
+    border: none;
+    cursor: pointer;
+    white-space: nowrap;
+}
+.glossary-item .arrow {
+    font-size: 14px;
+    color: #666;
+}
+
+/* 단어장 입력 컨테이너 */
+.glossary-input-container {
+    margin-bottom: 10px;
+    width: 100%;
+}
+.glossary-input {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    width: 100%;
+}
+.glossary-input input {
+    height: 18px;
+    padding: 4px 8px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    font-size: 12px;
+    flex: 1;
+    min-width: 0;
+}
+
+/* 단어장 입력 */
+.glossary-item input {
+    width: 100%;
+    padding: 6px 8px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+  }
+
+/* 원본 및 번역 입력 필드 스타일 */
+.glossary-input-source,
+.glossary-input-target {
+    flex: 1;
+    padding: 6px 8px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    font-size: 12px;
+}
+
+/* 토글바 */
+.glossary-toggle {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 16px;
+    background-color: #f5f5f5;
+    border: 1px solid #ddd;
+    border-radius: 0 0 4px 4px;
+    cursor: pointer;
+    user-select: none;
+    color: #666;
+    font-size: 12px;
+}
+.glossary-toggle.visible {
+    display: block;
+}
+
+/* 삭제 버튼 */
+.glossary-delete-btn {
+    padding: 6px 8px;
+    background-color: #dc3545;
+    color: #fff;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 12px;
+}
+
+/* 커스텀 스크롤바 */
+.glossary-list::-webkit-scrollbar {
+    width: 8px;
+    background-color: transparent;
+}
+.glossary-list::-webkit-scrollbar-track {
+    background: transparent;
+}
+.glossary-list::-webkit-scrollbar-thumb {
+    background-color: rgba(0, 0, 0, 0.2);
+    border-radius: 4px;
+    opacity: 0;
+    transition: opacity 1s ease;
+}
+.glossary-list:not(:hover)::-webkit-scrollbar-thumb {
+    opacity: 0;
+}
+.glossary-list:hover::-webkit-scrollbar-thumb {
+    opacity: 1;
+}
+
+/* 헤더 호버 효과 */
+.popup-header:hover {
+    background-color: #d0d0d0;
+}
+
+/* 닫기 버튼 호버 효과 */
+.popup-close-button:hover {
+    background-color: #ff6666;
+}
+
+/* 알림 메시지 */
+.message {
+    color: #3ab1f4;
+    font-size: 12px;
+    margin-top: 5px;
+}

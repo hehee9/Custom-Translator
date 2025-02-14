@@ -1,0 +1,38 @@
+{
+    "manifest_version": 3,
+    "name": "Custom Translator",
+    "version": "1.0.0",
+    "description": "단어장을 지정할 수 있는 Gemini 기반 커스텀 번역기",
+    "permissions": [
+        "storage",
+        "activeTab",
+        "contextMenus",
+        "scripting",
+        "webNavigation",
+        "tabs"
+    ],
+    "host_permissions": [
+       "<all_urls>"
+    ],
+    "action": {
+        "default_popup": "popup/popup.html",
+        "default_icon": {
+            "16": "assets/icon.png",
+            "48": "assets/icon.png",
+            "128": "assets/icon.png"
+        }
+    },
+    "background": {
+        "service_worker": "background/background.js"
+    },
+    "content_scripts": [{
+        "matches": ["<all_urls>"],
+        "js": ["utils/translator.js", "utils/storage.js", "utils/api.js", "content/content.js"],
+        "run_at": "document_idle"
+    }],
+    "icons": {
+        "16": "assets/icon.png",
+        "48": "assets/icon.png",
+        "128": "assets/icon.png"
+    }
+}

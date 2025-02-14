@@ -1,0 +1,50 @@
+/* content/content.css */
+
+/* 루트 변수 */
+:root {
+    --background-color: #2d2d2d;
+    --text-color: #ffffff;
+    --border-color: #3ab1f4;
+}
+
+/* 번역 버튼 */
+.translator-button {
+    position: fixed;
+    z-index: 999999;
+    background: var(--background-color, #2d2d2d);
+    color: var(--text-color, #ffffff);
+    padding: 5px 10px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 14px;
+    display: none;
+    user-select: none;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+    border: 1px solid var(--border-color, #3ab1f4);
+}
+.translator-button:hover {
+    background: #121212;
+}
+
+/* 번역 결과 */
+.translator-result {
+    position: fixed;
+    z-index: 999999;
+    padding: 10px 15px;
+    border-radius: 4px;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+    max-width: 400px;
+    min-width: 200px;
+    display: none;
+    font-size: 14px;
+    line-height: 1.6;
+    word-break: break-word;
+    white-space: pre-line;
+    background: var(--background-color, #2d2d2d);
+    color: var(--text-color, #ffffff);
+    border: 1px solid var(--border-color, #3ab1f4);
+}
+.translator-result[data-error="true"] {
+    border-color: #d93025;
+    background: #fce8e6;
+}
