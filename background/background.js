@@ -139,7 +139,9 @@ class BackgroundService {
     async isAccessibleUrl(tabId) {
         try {
             const tab = await chrome.tabs.get(tabId);
-            return tab?.url && !tab.url.startsWith("chrome://");
+            return tab?.url
+                && !tab.url.startsWith("chrome://")
+                && !tab.url.startsWith("chrome-extension://");
         } catch (error) {
             console.log("탭 접근 확인 실패(isAccessibleUrl):", error);
             return false;
