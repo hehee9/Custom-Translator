@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+  <div class="container">
+    <!-- 네비게이션 -->
+    <nav class="popup-nav">
+      <button class="nav-btn" data-target="apiSection">설정</button>
+      <button class="nav-btn" data-target="glossarySection">단어장</button>
+    </nav>
+    
+    <!-- 설정 탭 -->
+    <div id="apiSection" class="settings-section api-section">
+      <div class="section">
+        <button id="apiKeyIssue" class="api-issue-btn">API KEY 발급</button>
+        <div class="api-warning">※유료 계정에 연동 시 요금이 부과됨</div>
+        <div class="api-key-row">
+          <input type="password" id="apiKey" placeholder="Gemini API 키를 입력하세요">
+          <button id="saveApiKey">저장</button>
+        </div>
+        
+        <!-- 번역 모델 선택 -->
+        <div class="model-selection">
+          <h3>번역 모델 선택</h3>
+          <select id="modelSelect">
+            <option value="gemini-2.0-flash">Gemini 2.0 Flash - 매우 빠름, 준수한 성능</option>
+            <option value="gemini-2.5-flash-preview-04-17">Gemini 2.5 Flash - 약간 빠름, 좋은 성능</option>
+            <option value="gemini-2.5-pro-exp-03-25">Gemini 2.5 Pro - 보통, 뛰어난 성능</option>
+          </select>
+        </div>
+        
+        <div class="language-selection">
+          <h3>번역 언어 선택</h3>
+          <select id="languageSelect">
+            <option value="Korean">한국어</option>
+            <option value="English">English</option>
+            <option value="Japanese">日本語</option>
+            <option value="Chinese">中文 (简体)</option>
+            <option value="Chinese_TW">中文 (繁體)</option>
+            <option value="Spanish">Español</option>
+            <option value="French">Français</option>
+            <option value="German">Deutsch</option>
+            <option value="Italian">Italiano</option>
+            <option value="Russian">Русский</option>
+            <option value="Portuguese">Português</option>
+            <option value="Dutch">Nederlands</option>
+            <option value="Indonesian">Bahasa Indonesia</option>
+            <option value="Filipino">Filipino</option>
+            <option value="Malay">Bahasa Melayu</option>
+            <option value="Arabic">العربية</option>
+            <option value="Hindi">हिन्दी</option>
+            <option value="Vietnamese">Tiếng Việt</option>
+            <option value="Thai">ไทย</option>
+          </select>
+        </div>
+        
+        <div class="usage-row">
+          <span id="usageCount">0 / 1500</span>
+          <div class="usage-graph-container">
+            <div id="dailyUsageGraph" class="usage-graph"></div>
+          </div>
+        </div>
+        <div id="apiKeyMsg" class="message"></div>
+      </div>
+    </div>
+    
+    <!-- 단어장 탭 -->
+    <div id="glossarySection" class="settings-section glossary-section">
+      <div class="section">
+        <div class="glossary-actions-top">
+          <button id="importGlossary" class="small-action-btn">단어장 불러오기</button>
+          <button id="exportGlossary" class="small-action-btn">단어장 내보내기</button>
+        </div>
+        <div class="glossary-input-container">
+          <div class="glossary-input">
+            <input type="text" id="sourceWord" placeholder="원본 단어">
+            <span class="arrow">→</span>
+            <input type="text" id="targetWord" placeholder="번역 단어">
+            <button id="addWord">추가</button>
+          </div>
+        </div>
+        <!-- 검색, 정렬 -->
+        <div class="glossary-filter">
+          <input type="text" id="searchGlossary" placeholder="🔍 검색">
+          <select id="sortOrder">
+            <option value="recent">최신순</option>
+            <option value="old">오래된순</option>
+            <option value="modified">수정순</option>
+            <option value="modified_reverse">수정역순</option>
+            <option value="asc">이름순</option>
+            <option value="desc">이름역순</option>
+          </select>
+        </div>
+        <div id="glossaryList" class="glossary-list">
+          <!-- 단어장 항목 추가 -->
+        </div>
+        <div id="glossaryToggle" class="glossary-toggle">▼</div>
+      </div>
+    </div>
+  </div>
+  
+  <!-- i18n.js 먼저 로드 -->
+  <script src="../utils/i18n.js"></script>
+  <script src="../utils/storage.js"></script>
+  <script type="module" src="popup.js"></script>
+</body>
+</html>

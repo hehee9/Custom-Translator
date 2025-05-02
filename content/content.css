@@ -1,0 +1,69 @@
+/* content/content.css */
+
+/* 루트 변수 */
+:root {
+    --background-color: #2d2d2d;
+    --text-color: #ffffff;
+    --border-color: #3ab1f4;
+}
+
+/* 번역 버튼 */
+.translator-button {
+    position: fixed;
+    z-index: 999999;
+    background: var(--background-color, #2d2d2d);
+    color: var(--text-color, #ffffff);
+    padding: 5px 10px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 14px;
+    display: none;
+    user-select: none;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+    border: 1px solid var(--border-color, #3ab1f4);
+}
+.translator-button:hover {
+    background: #121212;
+}
+
+/* 번역 결과 */
+.translator-result {
+    position: fixed;
+    z-index: 999999;
+    padding: 10px 15px;
+    border-radius: 4px;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+    max-width: 400px;
+    min-width: 200px;
+    max-height: 300px; /* 최대 높이 설정 */
+    overflow-y: auto; /* 세로 스크롤 활성화 */
+    display: none;
+    font-size: 14px;
+    line-height: 1.6;
+    word-break: break-word;
+    white-space: pre-line;
+    background: var(--background-color, #2d2d2d);
+    color: var(--text-color, #ffffff);
+    border: 1px solid var(--border-color, #3ab1f4);
+    scrollbar-width: thin; /* Firefox에서 스크롤바 스타일링 */
+    scrollbar-color: #adadad var(--background-color); /* Firefox 스크롤바 색상 - 밝은 회색으로 변경 */
+}
+
+/* 웹킷 기반 브라우저용 스크롤바 스타일링 */
+.translator-result::-webkit-scrollbar {
+    width: 8px;
+}
+
+.translator-result::-webkit-scrollbar-track {
+    background: var(--background-color);
+}
+
+.translator-result::-webkit-scrollbar-thumb {
+    background-color: #adadad; /* 밝은 회색으로 변경 */
+    border-radius: 4px;
+}
+
+.translator-result[data-error="true"] {
+    border-color: #d93025;
+    background: #fce8e6;
+}
