@@ -3,6 +3,7 @@ import { choseongIncludes, hangulIncludes } from "../utils/hangul.js";
 
 document.addEventListener("DOMContentLoaded", async () => {
     const storage = new TranslatorStorage();
+    const i18n = new window.I18nManager();
 
     let glossaryList = document.getElementById("glossaryList");
     const glossaryToggle = document.getElementById("glossaryToggle");
@@ -12,8 +13,6 @@ document.addEventListener("DOMContentLoaded", async () => {
     const sourceWordInput = document.getElementById("sourceWord");
     const targetWordInput = document.getElementById("targetWord");
     const addWordBtn = document.getElementById("addWord");
-
-
 
     /**
      * @description 문자열 정규화
@@ -36,8 +35,6 @@ document.addEventListener("DOMContentLoaded", async () => {
             return String.fromCharCode(ch.charCodeAt(0) - 0x60);
         });
     }
-
-
 
     /**
      * @description 단어장 목록 뷰 모드 업데이트
@@ -187,8 +184,6 @@ document.addEventListener("DOMContentLoaded", async () => {
         });
     }
 
-
-
     /** @description 단어장 불러오기 */
     importBtn.addEventListener("click", () => {
         const input = document.createElement("input");
@@ -198,18 +193,25 @@ document.addEventListener("DOMContentLoaded", async () => {
             const file = e.target.files[0];
             const reader = new FileReader();
             reader.onload = async (event) => {
+                const msgEl = document.getElementById("glossaryMsg");
                 try {
                     const glossary = JSON.parse(event.target.result);
+                    
+                    if (!glossary || typeof glossary !== 'object' || !Array.isArray(glossary.words)) {
+                        throw new Error("유효한 단어장 형식이 아닙니다.");
+                    }
+                    
                     await storage.setGlossary(glossary);
                     await loadGlossary();
-                    const msgEl = document.getElementById("glossaryMsg");
                     if (msgEl) {
                         msgEl.textContent = "단어장을 불러왔습니다.";
                         setTimeout(() => { msgEl.textContent = ""; }, 3000);
                     }
                 } catch (error) {
-                    msgEl.textContent = "올바른 JSON 형식이 아닙니다.";
-                    setTimeout(() => { msgEl.textContent = ""; }, 3000);
+                    if (msgEl) {
+                        msgEl.textContent = "올바른 단어장 형식이 아닙니다.";
+                        setTimeout(() => { msgEl.textContent = ""; }, 3000);
+                    }
                 }
             };
             reader.readAsText(file);
@@ -230,8 +232,6 @@ document.addEventListener("DOMContentLoaded", async () => {
         URL.revokeObjectURL(url);
     });
 
-
-
     /** @description 네비게이션 탭 */
     const navButtons = document.querySelectorAll(".nav-btn");
     const settingsSections = document.querySelectorAll(".settings-section");
@@ -247,13 +247,27 @@ document.addEventListener("DOMContentLoaded", async () => {
         });
     });
 
-
-
     /** @description API 키 관리 */
     const keyInput = document.getElementById("apiKey");
     const keyBtn = document.getElementById("saveApiKey");
     const apiKeyIssueBtn = document.getElementById("apiKeyIssue");
     const dailyUsageGraph = document.getElementById("dailyUsageGraph");
+    const modelSelect = document.getElementById("modelSelect");
+
+    /** @description 모델 선택 초기화 */
+    const savedModel = await storage.getTranslationModel();
+    if (savedModel && modelSelect) {
+        modelSelect.value = savedModel;
+    }
+
+    /** @description 모델 선택 변경 이벤트 */
+    if (modelSelect) {
+        modelSelect.addEventListener("change", async () => {
+            const selectedModel = modelSelect.value;
+            await storage.setTranslationModel(selectedModel);
+            await updateDailyUsageGraph();
+        });
+    }
 
     /** @description API 키 발급 버튼 클릭 이벤트 */
     if (apiKeyIssueBtn) {
@@ -281,26 +295,30 @@ document.addEventListener("DOMContentLoaded", async () => {
 
     /** @description 일일 사용량 그래프 업데이트 */
     const updateDailyUsageGraph = async () => {
-        const usageData = await storage.getUsageData();
+        // 선택된 모델 가져오기
+        const model = await storage.getTranslationModel();
+        // 모델별 사용량 한도 가져오기
+        const modelLimits = storage.getModelLimits(model);
+        
+        // 현재 선택된 모델의 사용량 가져오기
+        const usageData = await storage.getUsageData(model);
         const today = new Date().toISOString().split("T")[0];
         const count = usageData?.date === today ? usageData.count : 0;
         
         /** @description 사용량 텍스트 업데이트 */
         const usageCountEl = document.getElementById("usageCount");
         if (usageCountEl) {
-            usageCountEl.textContent = `${count} / 1500`;
-            if (count >= 1500) usageCountEl.style.color = "red";
+            usageCountEl.textContent = `${count} / ${modelLimits.daily}`;
+            if (count >= modelLimits.daily) usageCountEl.style.color = "red";
             else usageCountEl.style.color = "";
         }
 
         if (dailyUsageGraph) {
-            const usagePercent = Math.min(count / 1500, 1);
+            const usagePercent = Math.min(count / modelLimits.daily, 1);
             dailyUsageGraph.style.width = (usagePercent * 100) + "%";
         }
     };
     updateDailyUsageGraph();
-
-
 
     /** @description 단어장 검색 */
     const searchInput = document.getElementById("searchGlossary");
@@ -372,8 +390,6 @@ document.addEventListener("DOMContentLoaded", async () => {
     glossaryList.parentNode.replaceChild(cleanGlossaryList, glossaryList);
     glossaryList = cleanGlossaryList;
 
-
-    
     /** @description API 키에 따른 탭 이동 */
     if (savedApiKey) {
         const glossaryBtn = document.querySelector(".nav-btn[data-target=\"glossarySection\"]");
@@ -385,4 +401,30 @@ document.addEventListener("DOMContentLoaded", async () => {
 
     await loadGlossaryView();
     await loadGlossary();
+
+    /** @description 언어 선택 초기화 */
+    const languageSelect = document.getElementById("languageSelect");
+    const savedLanguage = await storage.getTranslationLanguage();
+    if (savedLanguage && languageSelect) {
+        languageSelect.value = savedLanguage;
+    }
+
+    /** @description 언어 선택 변경 이벤트 */
+    if (languageSelect) {
+        languageSelect.addEventListener("change", async () => {
+            const selectedLanguage = languageSelect.value;
+            await storage.setTranslationLanguage(selectedLanguage);
+            // 언어 변경 시 UI 텍스트 업데이트
+            await i18n.updateAllTexts();
+            
+            // background.js에 언어 변경 알림
+            chrome.runtime.sendMessage({
+                action: "languageChanged", 
+                language: selectedLanguage
+            });
+        });
+    }
+
+    // 페이지 로드 시 UI 언어 업데이트
+    await i18n.updateAllTexts();
 });

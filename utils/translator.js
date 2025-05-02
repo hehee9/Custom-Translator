@@ -18,11 +18,16 @@ if (!window.Translator) {
          * @throws {Error} 번역 중 에러
          */
         async translate(text, options = {}) {
+            const i18n = new I18nManager();
             try {
                 const glossary = await this.storage.getGlossary();
-                const translation = await this.api.translate(text, glossary, options);
+                const language = await this.storage.getTranslationLanguage();
+                const translation = await this.api.translate(text, glossary, { 
+                    ...options,
+                    language
+                });
                 const formatted = translation.replace(/\n/g, "<br>");
-                return formatted || "번역 결과가 없습니다.";
+                return formatted || await i18n.getText("noTranslationResult");
             } catch (error) {
                 console.error("번역 중 에러:", error);
                 throw error;

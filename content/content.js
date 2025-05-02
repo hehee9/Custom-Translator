@@ -116,6 +116,8 @@ if (!window.TranslatorUI) {
             Object.assign(this.result.style, {
                 position: "absolute",
                 maxWidth: `${newMaxWidth}px`,
+                maxHeight: "300px",
+                overflowY: "auto",
                 display: "block",
                 top: `${posY}px`,
                 left: `${posX}px`,
@@ -167,20 +169,45 @@ if (!window.TranslatorUI) {
         }
 
         /**  @description 번역 UI (버튼, 결과 팝업) 생성 */
-        initUI() {
+        async initUI() {
             if (this.destroyed || !document.body) return;
 
-            if (!this.button) {
-                this.button = document.createElement("div");
-                this.button.className = "translator-button";
-                this.button.textContent = "번역";
-                this.button.addEventListener("click", this.handleButtonClick);
-                document.body.appendChild(this.button);
-            }
-            if (!this.result) {
-                this.result = document.createElement("div");
-                this.result.className = "translator-result";
-                document.body.appendChild(this.result);
+            try {
+                const storage = new TranslatorStorage();
+                const language = await storage.getTranslationLanguage() || "Korean";
+                
+                if (!this.button) {
+                    this.button = document.createElement("div");
+                    this.button.className = "translator-button";
+                    this.updateButtonText(language);
+                    this.button.addEventListener("click", this.handleButtonClick);
+                    document.body.appendChild(this.button);
+                } else {
+                    this.updateButtonText(language);
+                }
+                
+                if (!this.result) {
+                    this.result = document.createElement("div");
+                    this.result.className = "translator-result";
+                    document.body.appendChild(this.result);
+                }
+            } catch (error) {
+                console.error("UI 초기화 실패:", error);
+                
+                // 오류 발생 시 기본값으로 UI 생성
+                if (!this.button) {
+                    this.button = document.createElement("div");
+                    this.button.className = "translator-button";
+                    this.button.textContent = "번역"; // 기본값
+                    this.button.addEventListener("click", this.handleButtonClick);
+                    document.body.appendChild(this.button);
+                }
+                
+                if (!this.result) {
+                    this.result = document.createElement("div");
+                    this.result.className = "translator-result";
+                    document.body.appendChild(this.result);
+                }
             }
         }
 
@@ -271,45 +298,72 @@ if (!window.TranslatorUI) {
             }
         }
 
-        /**  @description 메시지 리스너 설정, 액션 처리 */
+        /**
+         * @description 메시지 리스너 설정
+         * - 번역 요청 및 확장 프로그램 상태 변경 메시지 처리
+         */
         setupMessageListener() {
-            if (this.destroyed) return;
-
-            if (this.messageHandler)
-                try {
-                    chrome.runtime.onMessage.removeListener(this.messageHandler);
-                } catch (e) { }
-
-            this.messageHandler = (message, _, sendResponse) => {
-                if (this.destroyed) return false;
-                try {
-                    switch (message.action) {
-                        case "ping": {
-                            sendResponse({ pong: true, initialized: this.isInitialized });
-                            return false;
-                        }
-                        case "translate": {
-                            sendResponse({ received: true });
-                            this.handleTranslation(message.text);
-                            return false;
-                        }
-                    }
-                } catch (error) {
-                    if (!this.destroyed) {
-                        console.error("메시지 처리 오류(setupMessageListener):", error);
-                        sendResponse({ error: error.message });
-                    }
+            this.messageHandler = (message, sender, sendResponse) => {
+                if (this.destroyed) {
+                    sendResponse({ success: false, error: "UI가 이미 해제됨" });
+                    return;
                 }
-                return false;
+
+                // 기존 코드 유지
+                if (message.action === "ping") {
+                    sendResponse({ pong: true });
+                } else if (message.action === "translate") {
+                    const text = message.text;
+                    if (text) {
+                        this.hideButton();
+                        this.handleTranslation(text);
+                        sendResponse({ success: true });
+                    } else {
+                        sendResponse({ success: false, error: "텍스트가 없음" });
+                    }
+                } 
+                // 언어 변경 메시지 처리 추가
+                else if (message.action === "languageChanged") {
+                    this.updateButtonText(message.language);
+                    sendResponse({ success: true });
+                }
             };
-            try {
-                chrome.runtime.onMessage.addListener(this.messageHandler);
-            } catch (e) {
-                if (!this.destroyed) console.error("메시지 리스너 추가 실패(setupMessageListener):", e);
-            }
+
+            chrome.runtime.onMessage.addListener(this.messageHandler);
         }
 
-
+        /**
+         * @description 번역 버튼 텍스트 업데이트
+         * @param {string} language 언어 코드
+         */
+        async updateButtonText(language) {
+            if (!this.button) return;
+            
+            // 언어별 버튼 텍스트
+            const buttonTexts = {
+                "Korean": "번역",
+                "English": "Translate",
+                "Japanese": "翻訳",
+                "Chinese": "翻译",
+                "Chinese_TW": "翻譯",
+                "Spanish": "Traducir",
+                "French": "Traduire",
+                "German": "Übersetzen",
+                "Italian": "Traduci",
+                "Russian": "Перевести",
+                "Portuguese": "Traduzir",
+                "Dutch": "Vertalen",
+                "Indonesian": "Terjemah",
+                "Filipino": "Isalin",
+                "Malay": "Terjemah",
+                "Arabic": "ترجمة",
+                "Hindi": "अनुवाद",
+                "Vietnamese": "Dịch",
+                "Thai": "แปล"
+            };
+            
+            this.button.textContent = buttonTexts[language] || "번역";
+        }
 
         /**
          * @description 텍스트 선택 이벤트 핸들러
@@ -448,15 +502,48 @@ if (!window.TranslatorUI) {
         }
 
         /** @description 로딩 상태 UI 표시 */
-        showLoadingState() {
+        async showLoadingState() {
             if (this.destroyed) return;
 
-            const defaultText = "번역 중...";
+            let loadingText = "번역 중..."; // 기본값
+            
+            try {
+                const storage = new TranslatorStorage();
+                const language = await storage.getTranslationLanguage();
+                
+                // 언어별 로딩 텍스트
+                const loadingTexts = {
+                    "Korean": "번역 중...",
+                    "English": "Translating...",
+                    "Japanese": "翻訳中...",
+                    "Chinese": "翻译中...",
+                    "Chinese_TW": "翻譯中...",
+                    "Spanish": "Traduciendo...",
+                    "French": "Traduction...",
+                    "German": "Übersetzung...",
+                    "Italian": "Traduzione in corso...",
+                    "Russian": "Перевод...",
+                    "Portuguese": "Traduzindo...",
+                    "Dutch": "Vertalen...",
+                    "Indonesian": "Menerjemahkan...",
+                    "Filipino": "Nagsasalin...",
+                    "Malay": "Menterjemah...",
+                    "Arabic": "جارٍ الترجمة...",
+                    "Hindi": "अनुवाद कर रहा है...",
+                    "Vietnamese": "Đang dịch...",
+                    "Thai": "กำลังแปล..."
+                };
+                
+                loadingText = loadingTexts[language] || loadingText;
+            } catch (error) {
+                console.error("언어 설정 로드 실패:", error);
+            }
+
             const { posX } = this._getPopupPosition(10, 10);
             this.loadingPosX = posX;
-            if (!this.translationActive) this.result.innerHTML = defaultText;
+            if (!this.translationActive) this.result.innerHTML = loadingText;
             this.translationActive = true;
-            this._applyPopupStyle(defaultText);
+            this._applyPopupStyle(loadingText);
         }
 
         /**

@@ -8,11 +8,11 @@
   <div class="container">
     <!-- 네비게이션 -->
     <nav class="popup-nav">
-      <button class="nav-btn" data-target="apiSection">API 키</button>
+      <button class="nav-btn" data-target="apiSection">설정</button>
       <button class="nav-btn" data-target="glossarySection">단어장</button>
     </nav>
     
-    <!-- API 탭 -->
+    <!-- 설정 탭 -->
     <div id="apiSection" class="settings-section api-section">
       <div class="section">
         <button id="apiKeyIssue" class="api-issue-btn">API KEY 발급</button>
@@ -21,6 +21,42 @@
           <input type="password" id="apiKey" placeholder="Gemini API 키를 입력하세요">
           <button id="saveApiKey">저장</button>
         </div>
+        
+        <!-- 번역 모델 선택 -->
+        <div class="model-selection">
+          <h3>번역 모델 선택</h3>
+          <select id="modelSelect">
+            <option value="gemini-2.0-flash">Gemini 2.0 Flash - 매우 빠름, 준수한 성능</option>
+            <option value="gemini-2.5-flash-preview-04-17">Gemini 2.5 Flash - 약간 빠름, 좋은 성능</option>
+            <option value="gemini-2.5-pro-exp-03-25">Gemini 2.5 Pro - 보통, 뛰어난 성능</option>
+          </select>
+        </div>
+        
+        <div class="language-selection">
+          <h3>번역 언어 선택</h3>
+          <select id="languageSelect">
+            <option value="Korean">한국어</option>
+            <option value="English">English</option>
+            <option value="Japanese">日本語</option>
+            <option value="Chinese">中文 (简体)</option>
+            <option value="Chinese_TW">中文 (繁體)</option>
+            <option value="Spanish">Español</option>
+            <option value="French">Français</option>
+            <option value="German">Deutsch</option>
+            <option value="Italian">Italiano</option>
+            <option value="Russian">Русский</option>
+            <option value="Portuguese">Português</option>
+            <option value="Dutch">Nederlands</option>
+            <option value="Indonesian">Bahasa Indonesia</option>
+            <option value="Filipino">Filipino</option>
+            <option value="Malay">Bahasa Melayu</option>
+            <option value="Arabic">العربية</option>
+            <option value="Hindi">हिन्दी</option>
+            <option value="Vietnamese">Tiếng Việt</option>
+            <option value="Thai">ไทย</option>
+          </select>
+        </div>
+        
         <div class="usage-row">
           <span id="usageCount">0 / 1500</span>
           <div class="usage-graph-container">
@@ -66,6 +102,8 @@
     </div>
   </div>
   
+  <!-- i18n.js 먼저 로드 -->
+  <script src="../utils/i18n.js"></script>
   <script src="../utils/storage.js"></script>
   <script type="module" src="popup.js"></script>
 </body>

@@ -1,7 +1,7 @@
 {
     "manifest_version": 3,
     "name": "Custom Translator",
-    "version": "1.0.0",
+    "version": "1.1.0",
     "description": "단어장을 지정할 수 있는 Gemini 기반 커스텀 번역기",
     "permissions": [
         "storage",
@@ -27,7 +27,7 @@
     },
     "content_scripts": [{
         "matches": ["<all_urls>"],
-        "js": ["utils/translator.js", "utils/storage.js", "utils/api.js", "content/content.js"],
+        "js": ["utils/storage.js", "utils/i18n.js", "utils/api.js", "utils/translator.js", "content/content.js"],
         "run_at": "document_idle"
     }],
     "icons": {

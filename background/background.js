@@ -3,11 +3,35 @@ class BackgroundService {
     activeTabsMap = new Map();
     portMap = new Map();
 
+    // 언어별 컨텍스트 메뉴 타이틀
+    menuTitles = {
+        "Korean": "선택한 텍스트 번역",
+        "English": "Translate selected text",
+        "Japanese": "選択したテキストを翻訳",
+        "Chinese": "翻译所选文本",
+        "Chinese_TW": "翻譯選取的文字",
+        "Spanish": "Traducir texto seleccionado",
+        "French": "Traduire le texte sélectionné",
+        "German": "Ausgewählten Text übersetzen",
+        "Italian": "Traduci testo selezionato",
+        "Russian": "Перевести выделенный текст",
+        "Portuguese": "Traduzir texto selecionado",
+        "Dutch": "Geselecteerde tekst vertalen",
+        "Indonesian": "Terjemahkan teks yang dipilih",
+        "Filipino": "Isalin ang napiling teksto",
+        "Malay": "Terjemah teks yang dipilih",
+        "Arabic": "ترجمة النص المحدد",
+        "Hindi": "चयनित पाठ का अनुवाद करें",
+        "Vietnamese": "Dịch văn bản đã chọn",
+        "Thai": "แปลข้อความที่เลือก"
+    };
+
     constructor() {
         this.removeContextMenu();
         this.setupContextMenu();
         this.setupNavigationListener();
         this.setupPortListener();
+        this.setupMessageListener();
     }
 
     /** @description 페이지 네비게이션 이벤트 리스너 설정 */
@@ -41,11 +65,16 @@ class BackgroundService {
     }
 
     /** @description 컨텍스트 메뉴 설정 및 클릭 핸들러 등록 */
-    setupContextMenu() {
+    async setupContextMenu() {
         try {
+            // 저장된 언어 가져오기
+            const language = await this.getTranslationLanguage() || "Korean";
+            // 언어에 맞는 메뉴 타이틀 사용
+            const menuTitle = this.menuTitles[language] || this.menuTitles["Korean"];
+            
             chrome.contextMenus.create({
                 id: "translate",
-                title: "선택한 텍스트 번역",
+                title: menuTitle,
                 contexts: ["selection"]
             },
             () => {
@@ -65,6 +94,20 @@ class BackgroundService {
     /** @description 기존 컨텍스트 메뉴 제거 */
     removeContextMenu() {
         chrome.contextMenus.removeAll();
+    }
+
+    /**
+     * @description 저장된 번역 언어 가져오기
+     * @returns {Promise<string>} 언어 코드
+     */
+    async getTranslationLanguage() {
+        try {
+            const result = await chrome.storage.local.get("translationLanguage");
+            return result.translationLanguage || "Korean";
+        } catch (error) {
+            console.error("언어 설정 가져오기 실패:", error);
+            return "Korean";
+        }
     }
 
     /**
@@ -129,8 +172,6 @@ class BackgroundService {
         }
     }
 
-
-
     /**
      * @description URL 접근 가능 여부 확인
      * @param {number} tabId 탭 ID
@@ -139,9 +180,7 @@ class BackgroundService {
     async isAccessibleUrl(tabId) {
         try {
             const tab = await chrome.tabs.get(tabId);
-            return tab?.url
-                && !tab.url.startsWith("chrome://")
-                && !tab.url.startsWith("chrome-extension://");
+            return tab?.url && !tab.url.startsWith("chrome://");
         } catch (error) {
             console.log("탭 접근 확인 실패(isAccessibleUrl):", error);
             return false;
@@ -162,8 +201,6 @@ class BackgroundService {
             });
         });
     }
-
-
 
     /**
      * @description 번역 처리 핸들러
@@ -207,6 +244,35 @@ class BackgroundService {
                     }
                 } else resolve(true);
             });
+        });
+    }
+
+    /** @description 메시지 리스너 설정 */
+    setupMessageListener() {
+        chrome.runtime.onMessage.addListener(async (message, sender, sendResponse) => {
+            if (message.action === "languageChanged") {
+                // 컨텍스트 메뉴 업데이트
+                this.removeContextMenu();
+                await this.setupContextMenu();
+                
+                // 모든 활성 탭에 언어 변경 메시지 전송
+                const tabs = await chrome.tabs.query({});
+                for (const tab of tabs) {
+                    try {
+                        chrome.tabs.sendMessage(tab.id, {
+                            action: "languageChanged",
+                            language: message.language
+                        }).catch(() => {
+                            // 일부 탭에서 오류가 발생해도 계속 진행
+                        });
+                    } catch (error) {
+                        // 오류 무시
+                    }
+                }
+                
+                sendResponse({success: true});
+            }
+            return true; // 비동기 응답을 위해 true 반환
         });
     }
 }

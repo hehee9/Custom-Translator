@@ -24,7 +24,22 @@ if (typeof(window) !== "undefined" && !window.TranslatorStorage) {
             await this.#storage.set({ apiKey });
         }
 
+        /**
+         * @description 번역 모델 가져오기
+         * @returns {Promise<string>} 선택된 모델
+         */
+        async getTranslationModel() {
+            const result = await this.#storage.get("translationModel");
+            return result.translationModel || "gemini-2.0-flash";
+        }
 
+        /**
+         * @description 번역 모델 설정
+         * @param {string} model 선택된 모델
+         */
+        async setTranslationModel(model) {
+            await this.#storage.set({ translationModel: model });
+        }
 
         /**
          * @description 단어장 불러오기
@@ -121,35 +136,93 @@ if (typeof(window) !== "undefined" && !window.TranslatorStorage) {
 
         
         /** @description 사용량 불러오기 */
-        async getUsageData() {
+        async getUsageData(model) {
+            if (!model) model = await this.getTranslationModel();
             const result = await this.#storage.get("usageData");
-            return result.usageData ?? { date: new Date().toISOString().split("T")[0], count: 0 };
+            let usageData = result.usageData || {};
+            
+            // 모델별 사용량이 없는 경우 초기화
+            if (!usageData[model]) {
+                usageData[model] = { date: new Date().toISOString().split("T")[0], count: 0 };
+            }
+            
+            return usageData[model];
         }
 
         /** @description 사용량 저장 */
-        async setUsageData(usageData) {
-            await this.#storage.set({ usageData });
+        async setUsageData(usageData, model) {
+            if (!model) model = await this.getTranslationModel();
+            
+            const result = await this.#storage.get("usageData");
+            let allUsageData = result.usageData || {};
+            allUsageData[model] = usageData;
+            
+            await this.#storage.set({ usageData: allUsageData });
         }
 
         /** @description 일일 사용량 증가 */
-        async increaseUsageCount() {
-            let usageData = await this.getUsageData();
+        async increaseUsageCount(model) {
+            if (!model) model = await this.getTranslationModel();
+            
+            let usageData = await this.getUsageData(model);
             const today = new Date().toISOString().split("T")[0];
-            if (usageData.date !== today) usageData = { date: today, count: 0 };
+            
+            if (usageData.date !== today) {
+                usageData = { date: today, count: 0 };
+            }
+            
             usageData.count++;
-            await this.setUsageData(usageData);
+            await this.setUsageData(usageData, model);
             return usageData.count;
         }
 
+        /** 
+         * @description 모델별 사용량 한도 반환
+         * @param {string} model 모델 코드
+         * @returns {{daily: number, minute: number}} 모델별 사용량 한도
+         */
+        getModelLimits(model) {
+            const limits = {
+                "gemini-2.0-flash": { daily: 1500, minute: 15 },
+                "gemini-2.5-flash-preview-04-17": { daily: 500, minute: 10 },
+                "gemini-2.5-pro-exp-03-25": { daily: 25, minute: 5 }
+            };
+            return limits[model] || limits["gemini-2.0-flash"];
+        }
+
         /** @description 분당 사용량 증가 */
-        async increaseMinuteUsage() {
+        async increaseMinuteUsage(model) {
+            if (!model) model = await this.getTranslationModel();
+            
             const result = await this.#storage.get("minuteUsage");
-            let usage = result.minuteUsage ?? [];
+            let allUsage = result.minuteUsage || {};
+            let usage = allUsage[model] || [];
+            
             const now = Date.now();
             usage = usage.filter(ts => now - ts < 60000);
             usage.push(now);
-            await this.#storage.set({ minuteUsage: usage });
+            
+            allUsage[model] = usage;
+            await this.#storage.set({ minuteUsage: allUsage });
+            
             return usage.length;
+        }
+
+        /**
+         * @description 번역 언어 가져오기
+         * @returns {Promise<string>} 선택된 번역 언어
+         */
+        async getTranslationLanguage() {
+            const result = await this.#storage.get("translationLanguage");
+            return result.translationLanguage || "Korean";
+        }
+
+        /**
+         * @description 번역 언어 설정
+         * @param {string} language 선택된 번역 언어
+         */
+        async setTranslationLanguage(language) {
+            await this.#storage.set({ translationLanguage: language });
         }
     }
 
