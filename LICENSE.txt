@@ -47,4 +47,4 @@ This software uses system default sans-serif fonts. These fonts are subject to t
 
 ## JSON Files
 
-The JSON files included in this software are part of the gemini-translator project and are subject to the same CC BY-NC 4.0 license as the rest of the software.
+The JSON files included in this software are part of the custom-translator project and are subject to the same CC BY-NC 4.0 license as the rest of the software.

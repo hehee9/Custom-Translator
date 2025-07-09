@@ -1,6 +1,17 @@
 # Changelog
 
 
+## v1.2.0 (2025.07.09)
+
+### Changed
+* 모델 업데이트 (Gemini 2.5 Flash, Gemini 2.5 Pro를 Preview 모델에서 정식 모델로 변경)
+* 기본 모델을 Gemini 2.5 Flash로 변경
+
+### Fixed
+* `TypeError: Failed to construct 'Translator': Illegal constructor` 오류 수정
+* `(sendTranslationMessage): [object Object]` 오류 수정
+
+
 ## v1.1.0 (2025.05.02)
 
 ### Added

@@ -30,7 +30,7 @@ if (typeof(window) !== "undefined" && !window.TranslatorStorage) {
          */
         async getTranslationModel() {
             const result = await this.#storage.get("translationModel");
-            return result.translationModel || "gemini-2.0-flash";
+            return result.translationModel || "gemini-2.5-flash";
         }
 
         /**
@@ -184,8 +184,8 @@ if (typeof(window) !== "undefined" && !window.TranslatorStorage) {
         getModelLimits(model) {
             const limits = {
                 "gemini-2.0-flash": { daily: 1500, minute: 15 },
-                "gemini-2.5-flash-preview-04-17": { daily: 500, minute: 10 },
-                "gemini-2.5-pro-exp-03-25": { daily: 25, minute: 5 }
+                "gemini-2.5-flash": { daily: 500, minute: 10 },
+                "gemini-2.5-pro": { daily: 25, minute: 5 }
             };
             return limits[model] || limits["gemini-2.0-flash"];
         }

@@ -861,8 +861,8 @@ if (!window.I18nManager) {
             const modelOptions = document.querySelectorAll('#modelSelect option');
             const modelDescKeys = {
                 "gemini-2.0-flash": "gemini20FlashDesc",
-                "gemini-2.5-flash-preview-04-17": "gemini25FlashDesc",
-                "gemini-2.5-pro-exp-03-25": "gemini25ProDesc"
+                "gemini-2.5-flash": "gemini25FlashDesc",
+                "gemini-2.5-pro": "gemini25ProDesc"
             };
             
             for (const option of modelOptions) {
