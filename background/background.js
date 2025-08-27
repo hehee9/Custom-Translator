@@ -5,6 +5,17 @@
 class BackgroundService {
     activeTabsMap = new Map();
     portMap = new Map();
+    
+    // 제한된 URL 관련 에러 패턴 (공통 사용)
+    static restrictedUrlErrorPatterns = [
+        "chrome://",
+        "Cannot access",
+        "Frame with ID",
+        "was removed",
+        "extension://",
+        "back/forward cache",
+        "Receiving end does not exist"
+    ];
 
     constructor() {
         this.removeContextMenu();
@@ -12,6 +23,16 @@ class BackgroundService {
         this.setupNavigationListener();
         this.setupPortListener();
         this.setupMessageListener();
+    }
+    
+    /**
+     * @description 제한된 URL 관련 에러인지 확인
+     * @param {Error} error 확인할 에러 객체
+     * @returns {boolean} 제한된 URL 관련 에러 여부
+     */
+    static isRestrictedUrlError(error) {
+        if (!error?.message) return false;
+        return this.restrictedUrlErrorPatterns.some(pattern => error.message.includes(pattern));
     }
 
     /** @description 페이지 네비게이션 이벤트 리스너 설정 */
@@ -124,8 +145,8 @@ class BackgroundService {
             }
             return true;
         } catch (error) {
-            // chrome:// URL 관련 에러는 무시하고 조용히 처리
-            if (error.message?.includes("chrome://") || error.message?.includes("Cannot access")) {
+            // 제한된 URL 관련 에러는 무시하고 조용히 처리
+            if (BackgroundService.isRestrictedUrlError(error)) {
                 return false;
             }
             console.error(`탭 ${tabId}: 컨텐츠 스크립트 주입 확인 실패 -`, error.message);
@@ -165,9 +186,9 @@ class BackgroundService {
                 files: ["content/content.css"]
             });
         } catch (error) {
-            // chrome:// URL 관련 에러는 무시하고 조용히 처리
-            if (error.message?.includes("chrome://") || error.message?.includes("Cannot access")) {
-                throw error; // 상위에서 조용히 처리됨
+            // 제한된 URL 관련 에러는 상위에서 조용히 처리되도록 재전파
+            if (BackgroundService.isRestrictedUrlError(error)) {
+                throw error;
             }
             console.error(`탭 ${tabId}: 컨텐츠 스크립트 주입 실패 -`, error.message);
             throw error;
@@ -271,9 +292,7 @@ class BackgroundService {
             await this.sendTranslationMessage(text, tabId);
         } catch (error) {
             // 제한된 URL 관련 에러는 조용히 처리
-            if (error.message?.includes("chrome://") || 
-                error.message?.includes("Cannot access") ||
-                error.message?.includes("extension://")) {
+            if (BackgroundService.isRestrictedUrlError(error)) {
                 return;
             }
             console.error(`탭 ${tabId}: 번역 처리 실패 -`, error.message);
@@ -309,11 +328,8 @@ class BackgroundService {
                 if (chrome.runtime.lastError) {
                     const errorMsg = chrome.runtime.lastError.message;
                     
-                    // 일반적인 에러 상황들은 조용히 처리
-                    if (errorMsg.includes("back/forward cache") ||
-                        errorMsg.includes("Receiving end does not exist") ||
-                        errorMsg.includes("chrome://") ||
-                        errorMsg.includes("Cannot access")) {
+                    // 제한된 URL 관련 에러들은 조용히 처리
+                    if (BackgroundService.restrictedUrlErrorPatterns.some(pattern => errorMsg.includes(pattern))) {
                         resolve(false);
                     } else {
                         console.warn(`탭 ${tabId}: 메시지 전송 실패 -`, errorMsg);

@@ -4,16 +4,70 @@ import { choseongIncludes, hangulIncludes } from "../utils/hangul.js";
 document.addEventListener("DOMContentLoaded", async () => {
     const storage = new TranslatorStorage();
     const i18n = new window.I18nManager();
-
-    const importBtn = document.getElementById("importGlossary");
     
-    // 프리셋 관리 요소들
-    const presetList = document.getElementById("presetList");
-    const createPresetBtn = document.getElementById("createPreset");
-    const exportDropdownBtn = document.getElementById("exportDropdown");
-    const exportDropdownMenu = document.getElementById("exportDropdownMenu");
-    const exportSelectedBtn = document.getElementById("exportSelected");
-    const exportAllBtn = document.getElementById("exportAll");
+    // 현재 언어를 i18n에 설정 (팝업 열 때마다 즉시 설정)
+    const currentLanguage = await storage.getTranslationLanguage();
+    if (currentLanguage) {
+        i18n.currentLanguage = currentLanguage;
+    }
+    
+    /**
+     * @description Enter 키 이벤트 핸들러 유틸리티
+     * @param {HTMLElement} element 이벤트를 등록할 요소
+     * @param {Function} callback Enter 키 눌렀을 때 실행할 함수
+     */
+    function addEnterKeyHandler(element, callback) {
+        if (!element) return;
+        element.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                callback();
+            }
+        });
+    }
+
+    /**
+     * @description DOM 요소 캐싱 객체
+     */
+    const elements = {
+        // 프리셋 관리 요소들
+        importBtn: document.getElementById("importGlossary"),
+        presetList: document.getElementById("presetList"),
+        createPresetBtn: document.getElementById("createPreset"),
+        exportDropdownBtn: document.getElementById("exportDropdown"),
+        exportDropdownMenu: document.getElementById("exportDropdownMenu"),
+        exportSelectedBtn: document.getElementById("exportSelected"),
+        exportAllBtn: document.getElementById("exportAll"),
+        
+        // 설정 관련 요소들
+        modelSelect: document.getElementById("modelSelect"),
+        languageSelect: document.getElementById("languageSelect"),
+        openAdvancedSettingsBtn: document.getElementById("openAdvancedSettings"),
+        openAdvancedSettingsGlossaryBtn: document.getElementById("openAdvancedSettingsGlossary"),
+        
+        // 사이트 설정 관련 요소들
+        toggleSiteSettingsBtn: document.getElementById("toggleSiteSettings"),
+        applySiteSettingsBtn: document.getElementById("applySiteSettings"),
+        resetSiteSettingsBtn: document.getElementById("resetSiteSettings"),
+        cancelSiteSettingsBtn: document.getElementById("cancelSiteSettings"),
+        
+        // 모달 관련 요소들
+        customConfirmModal: document.getElementById("customConfirmModal"),
+        confirmDialogTitle: document.getElementById("confirmDialogTitle"),
+        confirmDialogMessage: document.getElementById("confirmDialogMessage"),
+        confirmDialogIcon: document.getElementById("confirmDialogIcon"),
+        confirmDialogConfirm: document.getElementById("confirmDialogConfirm"),
+        confirmDialogCancel: document.getElementById("confirmDialogCancel")
+    };
+    
+    // 구 변수들 유지 (하위 호환성)
+    const importBtn = elements.importBtn;
+    const presetList = elements.presetList;
+    const createPresetBtn = elements.createPresetBtn;
+    const exportDropdownBtn = elements.exportDropdownBtn;
+    const exportDropdownMenu = elements.exportDropdownMenu;
+    const exportSelectedBtn = elements.exportSelectedBtn;
+    const exportAllBtn = elements.exportAllBtn;
     
     // 현재 편집 중인 프리셋
     let currentEditingPreset = null;
@@ -22,8 +76,8 @@ document.addEventListener("DOMContentLoaded", async () => {
     let currentDomain = null;
     let siteSettingsPanelOpen = false;
     
-    // 커스텀 모달 참조
-    const customConfirmModal = document.getElementById("customConfirmModal");
+    // 커스텀 모달 참조 (캐싱된 요소 사용)
+    const customConfirmModal = elements.customConfirmModal;
     
     /**
      * @description 커스텀 확인 다이얼로그 표시
@@ -37,12 +91,12 @@ document.addEventListener("DOMContentLoaded", async () => {
             title = await i18n.getText("confirm") || "확인";
         }
         return new Promise((resolve) => {
-            document.getElementById("confirmDialogTitle").textContent = title;
-            document.getElementById("confirmDialogMessage").textContent = message;
-            document.getElementById("confirmDialogIcon").textContent = icon;
+            elements.confirmDialogTitle.textContent = title;
+            elements.confirmDialogMessage.textContent = message;
+            elements.confirmDialogIcon.textContent = icon;
             
-            const confirmButton = document.getElementById("confirmDialogConfirm");
-            const cancelButton = document.getElementById("confirmDialogCancel");
+            const confirmButton = elements.confirmDialogConfirm;
+            const cancelButton = elements.confirmDialogCancel;
             
             const cleanup = () => {
                 customConfirmModal.classList.remove("show");
@@ -770,12 +824,8 @@ document.addEventListener("DOMContentLoaded", async () => {
             
             sourceInput.addEventListener("blur", updateItem);
             targetInput.addEventListener("blur", updateItem);
-            sourceInput.addEventListener("keypress", async (e) => {
-                if (e.key === "Enter") await updateItem();
-            });
-            targetInput.addEventListener("keypress", async (e) => {
-                if (e.key === "Enter") await updateItem();
-            });
+            addEnterKeyHandler(sourceInput, () => updateItem());
+            addEnterKeyHandler(targetInput, () => updateItem());
             
             deleteBtn.addEventListener("click", async () => {
                 const currentSource = sourceInput.value.trim();
@@ -826,15 +876,11 @@ document.addEventListener("DOMContentLoaded", async () => {
         }
         
         if (sourceInput) {
-            sourceInput.addEventListener('keypress', (e) => {
-                if (e.key === 'Enter') addWord();
-            });
+            addEnterKeyHandler(sourceInput, addWord);
         }
         
         if (targetInput) {
-            targetInput.addEventListener('keypress', (e) => {
-                if (e.key === 'Enter') addWord();
-            });
+            addEnterKeyHandler(targetInput, addWord);
         }
         
         // 검색
@@ -1102,24 +1148,20 @@ document.addEventListener("DOMContentLoaded", async () => {
         });
     });
 
-    /** @description 모델 선택 */
-    const modelSelect = document.getElementById("modelSelect");
-    
-    /** @description 고급 설정 버튼 */
-    const openAdvancedSettingsBtn = document.getElementById("openAdvancedSettings");
-    const openAdvancedSettingsGlossaryBtn = document.getElementById("openAdvancedSettingsGlossary");
+    /** @description 캐싱된 요소 사용 */
+    const modelSelect = elements.modelSelect;
+    const openAdvancedSettingsBtn = elements.openAdvancedSettingsBtn;
+    const openAdvancedSettingsGlossaryBtn = elements.openAdvancedSettingsGlossaryBtn;
 
-    /** @description 고급 설정 페이지 열기 */
+    /** @description 고급 설정 페이지 열기 (통합된 핸들러) */
+    const openOptionsPage = () => chrome.runtime.openOptionsPage();
+    
     if (openAdvancedSettingsBtn) {
-        openAdvancedSettingsBtn.addEventListener("click", () => {
-            chrome.runtime.openOptionsPage();
-        });
+        openAdvancedSettingsBtn.addEventListener("click", openOptionsPage);
     }
     
     if (openAdvancedSettingsGlossaryBtn) {
-        openAdvancedSettingsGlossaryBtn.addEventListener("click", () => {
-            chrome.runtime.openOptionsPage();
-        });
+        openAdvancedSettingsGlossaryBtn.addEventListener("click", openOptionsPage);
     }
 
     /** @description 모델 선택 초기화 */
@@ -1137,19 +1179,38 @@ document.addEventListener("DOMContentLoaded", async () => {
     }
     
     /** @description 언어 선택 변경 이벤트 */
-    const languageSelect = document.getElementById("languageSelect");
+    const languageSelect = elements.languageSelect;
     if (languageSelect) {
         // 저장된 언어 로드
         const savedLanguage = await storage.getTranslationLanguage();
         if (savedLanguage) {
             languageSelect.value = savedLanguage;
+            // i18n의 현재 언어도 초기 설정
+            i18n.currentLanguage = savedLanguage;
         }
         
         languageSelect.addEventListener("change", async () => {
             const selectedLanguage = languageSelect.value;
             await storage.setTranslationLanguage(selectedLanguage);
-            // UI 언어 업데이트
+            
+            // i18n의 현재 언어 업데이트
+            i18n.currentLanguage = selectedLanguage;
+            
+            // 백그라운드 스크립트에 언어 변경 알림
+            try {
+                await chrome.runtime.sendMessage({
+                    action: "languageChanged",
+                    language: selectedLanguage
+                });
+            } catch (error) {
+                console.warn("백그라운드 스크립트 언어 변경 알림 실패:", error);
+            }
+            
+            // UI 언어 즉시 업데이트
             await i18n.updateAllTexts();
+            
+            // 프리셋 목록도 다시 로드하여 언어 적용
+            await loadPresets();
         });
     }
 
@@ -1163,35 +1224,25 @@ document.addEventListener("DOMContentLoaded", async () => {
     // 현재 사이트 정보 로드
     await loadCurrentSiteInfo();
     
-    // 현재 사이트 설정 관련 이벤트 리스너
-    const toggleSiteSettingsBtn = document.getElementById("toggleSiteSettings");
-    const applySiteSettingsBtn = document.getElementById("applySiteSettings");
-    const resetSiteSettingsBtn = document.getElementById("resetSiteSettings");
-    const cancelSiteSettingsBtn = document.getElementById("cancelSiteSettings");
+    // 현재 사이트 설정 관련 이벤트 리스너 (캐싱된 요소 사용)
+    const toggleSiteSettingsBtn = elements.toggleSiteSettingsBtn;
+    const applySiteSettingsBtn = elements.applySiteSettingsBtn;
+    const resetSiteSettingsBtn = elements.resetSiteSettingsBtn;
+    const cancelSiteSettingsBtn = elements.cancelSiteSettingsBtn;
     
-    if (toggleSiteSettingsBtn) {
-        toggleSiteSettingsBtn.addEventListener("click", () => {
-            toggleSiteSettingsPanel();
-        });
-    }
+    // 이벤트 핸들러 통합 등록
+    const siteSettingsHandlers = [
+        { element: toggleSiteSettingsBtn, handler: toggleSiteSettingsPanel },
+        { element: applySiteSettingsBtn, handler: applySiteSettings },
+        { element: resetSiteSettingsBtn, handler: resetCurrentSiteSettings },
+        { element: cancelSiteSettingsBtn, handler: toggleSiteSettingsPanel }
+    ];
     
-    if (applySiteSettingsBtn) {
-        applySiteSettingsBtn.addEventListener("click", () => {
-            applySiteSettings();
-        });
-    }
-    
-    if (resetSiteSettingsBtn) {
-        resetSiteSettingsBtn.addEventListener("click", () => {
-            resetCurrentSiteSettings();
-        });
-    }
-    
-    if (cancelSiteSettingsBtn) {
-        cancelSiteSettingsBtn.addEventListener("click", () => {
-            toggleSiteSettingsPanel();
-        });
-    }
+    siteSettingsHandlers.forEach(({ element, handler }) => {
+        if (element) {
+            element.addEventListener("click", handler);
+        }
+    });
 
     await loadPresets();
 

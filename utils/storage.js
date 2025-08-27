@@ -6,73 +6,190 @@ if (typeof(window) !== "undefined" && !window.TranslatorStorage) {
      */
     class TranslatorStorage {
         #storage = chrome.storage.local;
+        
+        /**
+         * @description 메모리 캐시 (자주 조회되는 설정용)
+         * @private
+         */
+        #cache = new Map();
+        
+        /**
+         * @description 캐시 만료 시간 (ms) - 5분
+         * @private
+         */
+        #cacheExpiry = 5 * 60 * 1000;
 
         /**
-         * @description API 키 가져오기
+         * @description API 키 관리를 위한 설정 매핑
+         * @private
+         */
+        static #apiKeyMappings = {
+            gemini: { key: "apiKey", name: "Gemini" },
+            openai: { key: "openaiApiKey", name: "OpenAI" },
+            cerebras: { key: "cerebrasApiKey", name: "Cerebras" }
+        };
+
+        /**
+         * @description 캐시 가능한 설정 목록 (자주 조회되는 설정들)
+         * @private
+         */
+        static #cacheableSettings = new Set([
+            'translationModel', 
+            'translationLanguage', 
+            'viewMode'
+        ]);
+
+        /**
+         * @description 캐시에서 값 가져오기
+         * @param {string} key 캐시 키
+         * @returns {*|null} 캐시된 값 또는 null
+         * @private
+         */
+        #getCacheValue(key) {
+            const cached = this.#cache.get(key);
+            if (!cached) return null;
+            
+            if (Date.now() > cached.expiry) {
+                this.#cache.delete(key);
+                return null;
+            }
+            
+            return cached.value;
+        }
+
+        /**
+         * @description 캐시에 값 저장
+         * @param {string} key 캐시 키
+         * @param {*} value 저장할 값
+         * @private
+         */
+        #setCacheValue(key, value) {
+            this.#cache.set(key, {
+                value,
+                expiry: Date.now() + this.#cacheExpiry
+            });
+        }
+
+        /**
+         * @description 캐시에서 키 제거
+         * @param {string} key 캐시 키
+         * @private
+         */
+        #invalidateCache(key) {
+            this.#cache.delete(key);
+        }
+
+        /**
+         * @description 통합 설정 가져오기 (캐싱 지원)
+         * @param {string} key 설정 키
+         * @param {*} defaultValue 기본값
+         * @returns {Promise<*>} 설정 값
+         * @private
+         */
+        async #getSetting(key, defaultValue = null) {
+            // 캐시 확인
+            if (TranslatorStorage.#cacheableSettings.has(key)) {
+                const cached = this.#getCacheValue(key);
+                if (cached !== null) {
+                    return cached;
+                }
+            }
+
+            // 스토리지에서 가져오기
+            const result = await this.#storage.get(key);
+            const value = result[key] ?? defaultValue;
+
+            // 캐시 가능한 설정이면 캐시에 저장
+            if (TranslatorStorage.#cacheableSettings.has(key)) {
+                this.#setCacheValue(key, value);
+            }
+
+            return value;
+        }
+
+        /**
+         * @description 통합 설정 저장 (캐시 무효화)
+         * @param {string} key 설정 키
+         * @param {*} value 저장할 값
+         * @private
+         */
+        async #setSetting(key, value) {
+            await this.#storage.set({ [key]: value });
+            
+            // 캐시 무효화
+            if (TranslatorStorage.#cacheableSettings.has(key)) {
+                this.#invalidateCache(key);
+            }
+        }
+
+        /**
+         * @description 통합 API 키 가져오기
+         * @param {string} provider 프로바이더명 (gemini|openai|cerebras)
          * @returns {Promise<string>} API 키
          */
-        async getApiKey() {
-            const result = await this.#storage.get("apiKey");
-            return result.apiKey;
+        async getApiKey(provider = 'gemini') {
+            const mapping = TranslatorStorage.#apiKeyMappings[provider];
+            if (!mapping) {
+                console.error(`지원되지 않는 프로바이더: ${provider}`);
+                return undefined;
+            }
+
+            const result = await this.#storage.get(mapping.key);
+            return result[mapping.key];
         }
 
         /**
-         * @description API 키 설정
+         * @description 통합 API 키 설정
+         * @param {string} provider 프로바이더명 (gemini|openai|cerebras)
          * @param {string} apiKey API 키
          */
-        async setApiKey(apiKey) {
-            await this.#storage.set({ apiKey });
+        async setApiKey(provider, apiKey) {
+            // 단일 매개변수인 경우 (레거시 호환성)
+            if (typeof provider === 'string' && arguments.length === 1 && !TranslatorStorage.#apiKeyMappings[provider]) {
+                await this.#storage.set({ apiKey: provider });
+                return;
+            }
+
+            const mapping = TranslatorStorage.#apiKeyMappings[provider];
+            if (!mapping) {
+                console.error(`지원되지 않는 프로바이더: ${provider}`);
+                return;
+            }
+
+            await this.#storage.set({ [mapping.key]: apiKey });
         }
 
-        /**
-         * @description OpenAI API 키 가져오기
-         * @returns {Promise<string>} OpenAI API 키
-         */
+        // 레거시 호환성을 위한 함수들
         async getOpenAIApiKey() {
-            const result = await this.#storage.get("openaiApiKey");
-            return result.openaiApiKey;
+            return this.getApiKey('openai');
         }
 
-        /**
-         * @description OpenAI API 키 설정
-         * @param {string} apiKey OpenAI API 키
-         */
         async setOpenAIApiKey(apiKey) {
-            await this.#storage.set({ openaiApiKey: apiKey });
+            return this.setApiKey('openai', apiKey);
         }
 
-        /**
-         * @description Cerebras API 키 가져오기
-         * @returns {Promise<string>} Cerebras API 키
-         */
         async getCerebrasApiKey() {
-            const result = await this.#storage.get("cerebrasApiKey");
-            return result.cerebrasApiKey;
+            return this.getApiKey('cerebras');
         }
 
-        /**
-         * @description Cerebras API 키 설정
-         * @param {string} apiKey Cerebras API 키
-         */
         async setCerebrasApiKey(apiKey) {
-            await this.#storage.set({ cerebrasApiKey: apiKey });
+            return this.setApiKey('cerebras', apiKey);
         }
 
         /**
-         * @description 번역 모델 가져오기
+         * @description 번역 모델 가져오기 (캐싱 지원)
          * @returns {Promise<string>} 선택된 모델
          */
         async getTranslationModel() {
-            const result = await this.#storage.get("translationModel");
-            return result.translationModel || "gemini-2.5-flash";
+            return this.#getSetting('translationModel', 'gemini-2.5-flash');
         }
 
         /**
-         * @description 번역 모델 설정
+         * @description 번역 모델 설정 (캐시 무효화)
          * @param {string} model 선택된 모델
          */
         async setTranslationModel(model) {
-            await this.#storage.set({ translationModel: model });
+            await this.#setSetting('translationModel', model);
         }
 
         /**
@@ -151,20 +268,19 @@ if (typeof(window) !== "undefined" && !window.TranslatorStorage) {
 
 
         /**
-         * @description 뷰 모드 저장
+         * @description 뷰 모드 저장 (캐시 무효화)
          * @param {string} mode "partial" | "expanded" | "collapsed"
          */
         async setViewMode(mode) {
-            await this.#storage.set({ viewMode: mode });
+            await this.#setSetting('viewMode', mode);
         }
 
         /**
-         * @description 뷰 모드 불러오기
+         * @description 뷰 모드 불러오기 (캐싱 지원)
          * @returns {Promise<string>} 저장된 뷰 모드
          */
         async getViewMode() {
-            const result = await this.#storage.get("viewMode");
-            return result.viewMode || "partial";
+            return this.#getSetting('viewMode', 'partial');
         }
 
 
@@ -387,20 +503,19 @@ if (typeof(window) !== "undefined" && !window.TranslatorStorage) {
         }
 
         /**
-         * @description 번역 언어 가져오기
+         * @description 번역 언어 가져오기 (캐싱 지원)
          * @returns {Promise<string>} 선택된 번역 언어
          */
         async getTranslationLanguage() {
-            const result = await this.#storage.get("translationLanguage");
-            return result.translationLanguage || "Korean";
+            return this.#getSetting('translationLanguage', 'Korean');
         }
 
         /**
-         * @description 번역 언어 설정
+         * @description 번역 언어 설정 (캐시 무효화)
          * @param {string} language 선택된 번역 언어
          */
         async setTranslationLanguage(language) {
-            await this.#storage.set({ translationLanguage: language });
+            await this.#setSetting('translationLanguage', language);
         }
 
         /**
@@ -410,6 +525,156 @@ if (typeof(window) !== "undefined" && !window.TranslatorStorage) {
         #generateId() {
             return 'preset-' + Date.now() + '-' + Math.random().toString(36).substr(2, 9);
         }
+
+        /**
+         * @description 프리셋 매니저 인스턴스
+         * @private
+         */
+        #presetManager = null;
+
+        /**
+         * @description 프리셋 매니저 가져오기 (지연 초기화)
+         * @returns {PresetManager} 프리셋 매니저 인스턴스
+         * @private
+         */
+        #getPresetManager() {
+            if (!this.#presetManager) {
+                this.#presetManager = new TranslatorStorage.#PresetManager(this);
+            }
+            return this.#presetManager;
+        }
+
+        /**
+         * @class PresetManager
+         * @description 프리셋 관리를 위한 통합 클래스
+         * @private
+         */
+        static #PresetManager = class {
+            constructor(storage) {
+                this.storage = storage;
+            }
+
+            /**
+             * @description 프리셋 유효성 검사
+             * @param {string} presetId 프리셋 ID
+             * @param {Object} presets 프리셋 목록
+             * @returns {boolean} 유효성 여부
+             * @private
+             */
+            #validatePreset(presetId, presets) {
+                if (!presetId || typeof presetId !== 'string') {
+                    console.error("유효하지 않은 프리셋 ID:", presetId);
+                    return false;
+                }
+                if (!presets[presetId]) {
+                    console.error("존재하지 않는 프리셋:", presetId);
+                    return false;
+                }
+                return true;
+            }
+
+            /**
+             * @description 프리셋 데이터 정규화
+             * @param {Object} presetData 프리셋 데이터
+             * @returns {Object} 정규화된 프리셋 데이터
+             * @private
+             */
+            #normalizePresetData(presetData) {
+                const now = Date.now();
+                return {
+                    id: presetData.id || this.storage.#generateId(),
+                    name: presetData.name || "새 프리셋",
+                    words: presetData.words || [],
+                    version: presetData.version || 1,
+                    created: presetData.created || now,
+                    updated: presetData.updated || now,
+                    isActive: presetData.isActive !== undefined ? presetData.isActive : false,
+                    ...presetData
+                };
+            }
+
+            /**
+             * @description 프리셋과 설정을 함께 업데이트하는 트랜잭션
+             * @param {function} updateFunction 업데이트 함수
+             * @returns {Promise} 업데이트 결과
+             * @private
+             */
+            async #performTransaction(updateFunction) {
+                const presets = await this.storage.getGlossaryPresets();
+                const settings = await this.storage.getGlossarySettings();
+                
+                const result = await updateFunction(presets, settings);
+                
+                // 한 번에 모든 변경사항 저장 (원자성 보장)
+                if (result.presets) {
+                    await this.storage.setGlossaryPresets(result.presets);
+                }
+                if (result.settings) {
+                    await this.storage.setGlossarySettings(result.settings);
+                }
+                
+                return result.returnValue || true;
+            }
+
+            /**
+             * @description 프리셋에 단어 추가
+             * @param {string} presetId 프리셋 ID  
+             * @param {string} source 원본 단어
+             * @param {string} target 번역 단어
+             * @returns {Promise<boolean>} 성공 여부
+             */
+            async addWord(presetId, source, target) {
+                return this.#performTransaction(async (presets, settings) => {
+                    if (!this.#validatePreset(presetId, presets)) {
+                        return { returnValue: false };
+                    }
+                    
+                    const preset = presets[presetId];
+                    if (!preset.words) preset.words = [];
+                    
+                    // 기존 단어 확인
+                    const existingIndex = preset.words.findIndex(word => word.source === source);
+                    const newWord = { source, target, timestamp: Date.now() };
+                    
+                    if (existingIndex !== -1) {
+                        preset.words[existingIndex] = newWord;
+                    } else {
+                        preset.words.push(newWord);
+                    }
+                    
+                    preset.updated = Date.now();
+                    
+                    return { presets };
+                });
+            }
+
+            /**
+             * @description 프리셋에서 단어 제거
+             * @param {string} presetId 프리셋 ID
+             * @param {string} source 원본 단어
+             * @returns {Promise<boolean>} 성공 여부
+             */
+            async removeWord(presetId, source) {
+                return this.#performTransaction(async (presets, settings) => {
+                    if (!this.#validatePreset(presetId, presets)) {
+                        return { returnValue: false };
+                    }
+                    
+                    const preset = presets[presetId];
+                    if (!preset.words) return { returnValue: false };
+                    
+                    const originalLength = preset.words.length;
+                    preset.words = preset.words.filter(word => word.source !== source);
+                    
+                    if (preset.words.length < originalLength) {
+                        preset.updated = Date.now();
+                        return { presets };
+                    }
+                    
+                    return { returnValue: false };
+                });
+            }
+        };
 
         /**
          * @description 기존 단어장을 새 프리셋 구조로 마이그레이션

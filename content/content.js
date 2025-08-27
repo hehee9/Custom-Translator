@@ -33,9 +33,91 @@ if (!window.TranslatorUI) {
         thinkingSection = null;
         thinkingContentDiv = null;
 
+        /**
+         * @description DOM 요소 캐시
+         * @private
+         */
+        #domCache = new Map();
+        
+        /**
+         * @description 자주 사용되는 selector들
+         * @private
+         */
+        static #commonSelectors = {
+            thinkingHeader: '.thinking-header',
+            thinkingContent: '.thinking-content',
+            thinkingToggle: '.thinking-toggle',
+            translationContent: '.translation-content',
+            copyButton: '.copy-button',
+            translationInfoContainer: '.translation-info-container',
+            leftInfo: '.left-info',
+            rightActions: '.right-actions'
+        };
+
         constructor() {
             this.init();
             window.addEventListener("pagehide", this.handlePageHide);
+        }
+
+        /**
+         * @description 캐시된 DOM 요소 가져오기
+         * @param {string} selector CSS 선택자
+         * @param {Element} [context=this.result] 검색 컨텍스트
+         * @returns {Element|null} DOM 요소
+         * @private
+         */
+        #getCachedElement(selector, context = this.result) {
+            if (!context) return null;
+            
+            const cacheKey = `${selector}:${context === this.result ? 'result' : 'custom'}`;
+            
+            if (this.#domCache.has(cacheKey)) {
+                const cached = this.#domCache.get(cacheKey);
+                // 요소가 여전히 DOM에 존재하는지 확인
+                if (cached && cached.parentNode) {
+                    return cached;
+                }
+                // 캐시 무효화
+                this.#domCache.delete(cacheKey);
+            }
+            
+            const element = context.querySelector(selector);
+            if (element) {
+                this.#domCache.set(cacheKey, element);
+            }
+            
+            return element;
+        }
+
+        /**
+         * @description 여러 캐시된 DOM 요소 가져오기
+         * @param {string} selector CSS 선택자
+         * @param {Element} [context=this.result] 검색 컨텍스트
+         * @returns {NodeList} DOM 요소 목록
+         * @private
+         */
+        #getCachedElements(selector, context = this.result) {
+            if (!context) return [];
+            return context.querySelectorAll(selector);
+        }
+
+        /**
+         * @description DOM 캐시 무효화
+         * @private
+         */
+        #invalidateDOMCache() {
+            this.#domCache.clear();
+        }
+
+        /**
+         * @description 결과 컨테이너에서 특정 요소 가져오기 (캐시 사용)
+         * @param {string} type 요소 타입 (commonSelectors의 키)
+         * @returns {Element|null} DOM 요소
+         * @private
+         */
+        #getResultElement(type) {
+            const selector = TranslatorUI.#commonSelectors[type];
+            return selector ? this.#getCachedElement(selector) : null;
         }
 
         /**
@@ -195,24 +277,7 @@ if (!window.TranslatorUI) {
                     this.result.className = "translator-result";
                     
                     // 이벤트 위임으로 추론 영역 토글 처리
-                    this.result.addEventListener("click", (e) => {
-                        if (e.target.closest(".thinking-header")) {
-                            const header = e.target.closest(".thinking-header");
-                            const content = header.nextElementSibling;
-                            const toggle = header.querySelector(".thinking-toggle");
-                            
-                            if (content && toggle) {
-                                const isCollapsed = content.classList.contains("collapsed");
-                                if (isCollapsed) {
-                                    content.classList.remove("collapsed");
-                                    toggle.classList.remove("collapsed");
-                                } else {
-                                    content.classList.add("collapsed");
-                                    toggle.classList.add("collapsed");
-                                }
-                            }
-                        }
-                    });
+                    this.result.addEventListener("click", this.handleThinkingToggle);
                     
                     document.body.appendChild(this.result);
                 }
@@ -234,24 +299,7 @@ if (!window.TranslatorUI) {
                     this.result.className = "translator-result";
                     
                     // 이벤트 위임으로 추론 영역 토글 처리
-                    this.result.addEventListener("click", (e) => {
-                        if (e.target.closest(".thinking-header")) {
-                            const header = e.target.closest(".thinking-header");
-                            const content = header.nextElementSibling;
-                            const toggle = header.querySelector(".thinking-toggle");
-                            
-                            if (content && toggle) {
-                                const isCollapsed = content.classList.contains("collapsed");
-                                if (isCollapsed) {
-                                    content.classList.remove("collapsed");
-                                    toggle.classList.remove("collapsed");
-                                } else {
-                                    content.classList.add("collapsed");
-                                    toggle.classList.add("collapsed");
-                                }
-                            }
-                        }
-                    });
+                    this.result.addEventListener("click", this.handleThinkingToggle);
                     
                     document.body.appendChild(this.result);
                 }
@@ -420,6 +468,30 @@ if (!window.TranslatorUI) {
             };
             
             this.button.textContent = buttonTexts[language] || "번역";
+        }
+        
+        /**
+         * @description 추론 영역 토글 핸들러 (이벤트 위임)
+         * @param {Event} e 클릭 이벤트
+         * @private
+         */
+        handleThinkingToggle = (e) => {
+            if (e.target.closest(".thinking-header")) {
+                const header = e.target.closest(".thinking-header");
+                const content = header.nextElementSibling;
+                const toggle = header.querySelector(".thinking-toggle");
+                
+                if (content && toggle) {
+                    const isCollapsed = content.classList.contains("collapsed");
+                    if (isCollapsed) {
+                        content.classList.remove("collapsed");
+                        toggle.classList.remove("collapsed");
+                    } else {
+                        content.classList.add("collapsed");
+                        toggle.classList.add("collapsed");
+                    }
+                }
+            }
         }
 
         /**
@@ -752,27 +824,26 @@ if (!window.TranslatorUI) {
         }
 
         /**
-         * @description 추론 내용 업데이트
+         * @description 추론 내용 업데이트 (최적화된 DOM 쿼리)
          * @param {string} thinkingText 추론 내용
          */
         updateThinkingContent(thinkingText) {
             if (this.destroyed) return;
             
-            // 실제 DOM 요소를 찾아서 업데이트
-            const actualThinkingContent = this.result.querySelector('.thinking-content');
-            if (actualThinkingContent) {
-                actualThinkingContent.textContent = thinkingText;
+            const thinkingContent = this.#getResultElement('thinkingContent');
+            if (thinkingContent) {
+                thinkingContent.textContent = thinkingText;
             }
         }
 
         /**
-         * @description 번역 결과 내용만 업데이트 (thinking 모델용)
+         * @description 번역 결과 내용만 업데이트 (thinking 모델용, 최적화된 DOM 쿼리)
          * @param {string} translationText 번역 결과 텍스트
          */
         updateTranslationContent(translationText) {
             if (this.destroyed) return;
             
-            const translationContent = this.result.querySelector('.translation-content');
+            const translationContent = this.#getResultElement('translationContent');
             if (translationContent) {
                 translationContent.textContent = translationText;
             }
@@ -824,24 +895,24 @@ if (!window.TranslatorUI) {
         }
 
         /**
-         * @description 기존 DOM 내용에 복사 버튼만 추가 (줄바꿈 보존)
+         * @description 기존 DOM 내용에 복사 버튼만 추가 (줄바꿈 보존, 최적화된 DOM 쿼리)
          * @param {string} text 복사할 텍스트
          */
         async addCopyButtonToExistingContent(text) {
             if (this.destroyed || !this.result) return;
             
-            // 이미 복사 버튼이 있는지 확인
+            // 이미 복사 버튼이 있는지 확인 (캐시 사용하지 않고 실제 DOM 검사)
             const existingCopyButton = this.result.querySelector('.copy-button');
-            if (existingCopyButton) {
+            if (existingCopyButton && existingCopyButton.parentNode && this.result.contains(existingCopyButton)) {
                 return;
             }
             
-            // right-actions 영역을 찾거나 생성
+            // right-actions 영역을 찾거나 생성 (실제 DOM 검사)
             let rightActions = this.result.querySelector('.right-actions');
             
             if (!rightActions) {
                 // right-actions가 없다면 translation-info-container를 찾아서 추가
-                const infoContainer = this.result.querySelector('.translation-info-container');
+                let infoContainer = this.result.querySelector('.translation-info-container');
                 
                 if (infoContainer) {
                     rightActions = document.createElement('div');
@@ -849,19 +920,21 @@ if (!window.TranslatorUI) {
                     infoContainer.appendChild(rightActions);
                 } else {
                     // info container가 없다면 새로 생성 (fallback)
-                    const newInfoContainer = document.createElement('div');
-                    newInfoContainer.className = 'translation-info-container';
+                    infoContainer = document.createElement('div');
+                    infoContainer.className = 'translation-info-container';
                     
                     const leftInfo = document.createElement('div');
                     leftInfo.className = 'left-info';
-                    newInfoContainer.appendChild(leftInfo);
+                    infoContainer.appendChild(leftInfo);
                     
                     rightActions = document.createElement('div');
                     rightActions.className = 'right-actions';
-                    newInfoContainer.appendChild(rightActions);
+                    infoContainer.appendChild(rightActions);
                     
-                    this.result.appendChild(newInfoContainer);
+                    this.result.appendChild(infoContainer);
                 }
+                // DOM 구조 변경 후 캐시 무효화
+                this.#invalidateDOMCache();
             }
             
             // 복사 버튼 생성 및 추가
@@ -919,6 +992,8 @@ if (!window.TranslatorUI) {
                 overflowWrap: "break-word"
             });
             this.result.innerHTML = htmlContent;
+            // DOM 구조가 변경되었으므로 캐시 무효화
+            this.#invalidateDOMCache();
         }
 
         /**
@@ -955,6 +1030,9 @@ if (!window.TranslatorUI) {
                     this.result.appendChild(element);
                 }
             });
+            
+            // DOM 구조가 변경되었으므로 캐시 무효화
+            this.#invalidateDOMCache();
         }
 
         /**

@@ -7,6 +7,7 @@ if (!window.I18nManager) {
     window.I18nManager = class I18nManager {
         constructor() {
             this.storage = new TranslatorStorage();
+            this.currentLanguage = null; // 현재 언어 캐시
             this.translations = {
                 // 한국어 (기본)
                 "Korean": {
@@ -1897,15 +1898,18 @@ if (!window.I18nManager) {
         }
         
         /**
-         * @description 현재 언어 가져오기
+         * @description 현재 언어 가져오기 (캐시된 값 우선 사용)
          * @returns {Promise<string>} 언어 코드
          */
         async getCurrentLanguage() {
-            return await this.storage.getTranslationLanguage();
+            if (!this.currentLanguage) {
+                this.currentLanguage = await this.storage.getTranslationLanguage();
+            }
+            return this.currentLanguage;
         }
         
         /**
-         * @description 텍스트 번역
+         * @description 텍스트 번역 (캐시된 언어 사용)
          * @param {string} key 텍스트 키
          * @param {Object} [params={}] 치환할 파라미터
          * @returns {Promise<string>} 번역된 텍스트

@@ -1,30 +1,78 @@
 /**
- * @description Gemini 응답 객체에서 텍스트 추출
- * @param {Object} json API 응답 JSON 객체
- * @returns {string} 결합된 텍스트 | 빈 문자열
+ * @class ResponseExtractor
+ * @description API 응답에서 텍스트를 추출하는 전략 패턴 구현
  */
-function extractCandidateText(json) {
-    try {
-        const parts = json?.candidates?.[0]?.content?.parts;
-        return Array.isArray(parts) && parts.length > 0
-            ? parts.map(part => part.text).join("") : "";
-    } catch (error) {
-        console.error("텍스트 추출 오류(extractCandidateText): ", error);
-        return "";
+if (!window.ResponseExtractor) {
+    window.ResponseExtractor = class ResponseExtractor {
+    static strategies = {
+        gemini: {
+            extractText: (json) => {
+                const parts = json?.candidates?.[0]?.content?.parts;
+                return Array.isArray(parts) && parts.length > 0
+                    ? parts.map(part => part.text).join("") : "";
+            },
+            getUsageData: (json) => json.usageMetadata || {}
+        },
+        openai: {
+            extractText: (json) => json?.choices?.[0]?.message?.content || "",
+            getUsageData: (json) => json.usage || {}
+        },
+        cerebras: {
+            extractText: (json) => json?.choices?.[0]?.message?.content || "",
+            getUsageData: (json) => json.usage || {}
+        }
+    };
+
+    /**
+     * @description 프로바이더에 따라 응답에서 텍스트 추출
+     * @param {Object} json API 응답 JSON 객체
+     * @param {string} provider 프로바이더명 (gemini|openai|cerebras)
+     * @returns {string} 추출된 텍스트 | 빈 문자열
+     */
+    static extractText(json, provider) {
+        try {
+            const strategy = this.strategies[provider];
+            if (!strategy) {
+                console.error(`지원되지 않는 프로바이더: ${provider}`);
+                return "";
+            }
+            return strategy.extractText(json);
+        } catch (error) {
+            console.error(`텍스트 추출 오류(${provider}):`, error);
+            return "";
+        }
     }
+
+    /**
+     * @description 프로바이더에 따라 사용량 데이터 추출
+     * @param {Object} json API 응답 JSON 객체
+     * @param {string} provider 프로바이더명
+     * @returns {Object} 사용량 데이터
+     */
+    static getUsageData(json, provider) {
+        try {
+            const strategy = this.strategies[provider];
+            if (!strategy) return {};
+            return strategy.getUsageData(json);
+        } catch (error) {
+            console.error(`사용량 데이터 추출 오류(${provider}):`, error);
+            return {};
+        }
+    };
 }
 
 /**
- * @description OpenAI 응답 객체에서 텍스트 추출
- * @param {Object} json API 응답 JSON 객체
- * @returns {string} 추출된 텍스트 | 빈 문자열
+ * @description 안전한 JSON 파싱 유틸리티
+ * @param {string} text JSON 문자열
+ * @param {string} context 컨텍스트 (로깅용)
+ * @returns {Object|null} 파싱된 객체 또는 null
  */
-function extractOpenAIText(json) {
+function safeJsonParse(text, context) {
     try {
-        return json?.choices?.[0]?.message?.content || "";
+        return JSON.parse(text);
     } catch (error) {
-        console.error("텍스트 추출 오류(extractOpenAIText): ", error);
-        return "";
+        console.error(`JSON 파싱 오류(${context}):`, error);
+        return null;
     }
 }
 
@@ -58,420 +106,433 @@ function parseQwenThinking(content) {
     return { thinking, response };
 }
 
-/**
- * @description Cerebras 응답 객체에서 텍스트 추출
- * @param {Object} json API 응답 JSON 객체
- * @returns {string} 추출된 텍스트 | 빈 문자열
- */
+// ResponseExtractor 참조
+const ResponseExtractor = window.ResponseExtractor;
+
+// 레거시 호환성을 위한 함수들 (기존 코드가 깨지지 않도록)  
+function extractCandidateText(json) {
+    return ResponseExtractor.extractText(json, 'gemini');
+}
+
+function extractOpenAIText(json) {
+    return ResponseExtractor.extractText(json, 'openai');
+}
+
 function extractCerebrasText(json) {
-    try {
-        return json?.choices?.[0]?.message?.content || "";
-    } catch (error) {
-        console.error("텍스트 추출 오류(extractCerebrasText): ", error);
-        return "";
-    }
+    return ResponseExtractor.extractText(json, 'cerebras');
 }
 
 /**
- * @description 에러 코드 별 오류 메시지 처리
- * @param {Response} response fetch 응답 객체
- * @param {string} provider "gemini" | "openai" | "cerebras"
- * @throws {Error} 적절한 Error 객체
+ * @class ApiErrorHandler
+ * @description API 에러 처리를 위한 통합 클래스
  */
-async function handleApiError(response, provider = "gemini") {
-    let errorData = {};
-    try {
-        errorData = await response.json();
-    } catch (jsonErr) {
-        console.error("JSON 파싱 오류(handleApiError): ", jsonErr);
-    }
-    
-    // 객체 타입 검사 및 JSON 문자열화 처리
-    if (typeof errorData === 'object' && errorData !== null) {
-        console.error("API 오류 응답:", JSON.stringify(errorData, null, 2));
-    } else {
-        console.error("API 오류 응답:", errorData);
-    }
-
-    if (provider === "openai") {
-        const openAIErrorMessages = {
-            400: () => "요청 형식이 올바르지 않습니다. 입력값을 확인해주세요.",
+if (!window.ApiErrorHandler) {
+    window.ApiErrorHandler = class ApiErrorHandler {
+    static errorMessageMaps = {
+        // 공통 에러 메시지들
+        common: {
+            400: "요청 형식이 올바르지 않습니다. 입력값을 확인해주세요.",
+            403: "API 키에 필요한 권한이 없습니다.",
+            404: "요청한 리소스를 찾을 수 없습니다.",
+            429: "비율 제한 초과: 요청을 너무 자주 보내고 있습니다. 잠시 후 다시 시도해주세요.",
+            500: "서버 내부 오류가 발생했습니다. 잠시 후 다시 시도해주세요.",
+            503: "서비스에 일시적으로 과부하가 발생했습니다. 잠시 후 다시 시도해주세요."
+        },
+        
+        // 프로바이더별 특수 케이스
+        gemini: {
+            400: (data) => {
+                if (data.error?.message === "API key not valid. Please pass a valid API key.") {
+                    return "API 키가 올바르지 않습니다. 올바른 API 키를 입력해주세요.";
+                }
+                if (data.error?.status === "FAILED_PRECONDITION") {
+                    return "거주 국가에서는 Gemini API 무료 등급을 이용할 수 없습니다. 결제 설정을 확인해주세요.";
+                }
+                return ApiErrorHandler.errorMessageMaps.common[400];
+            },
+            403: () => "API 키에 필요한 권한이 없습니다. 올바른 API 키를 입력해주세요.",
+            404: () => "요청한 리소스를 찾을 수 없습니다.",
+            504: () => "요청 처리 시간이 초과되었습니다. 프롬프트나 컨텍스트의 길이를 줄여주세요."
+        },
+        
+        openai: {
             401: () => "OpenAI API 키가 올바르지 않습니다. 올바른 API 키를 입력해주세요.",
-            403: () => "API 키에 필요한 권한이 없습니다.",
             404: () => "요청한 모델을 찾을 수 없습니다.",
-            429: () => "비율 제한 초과: 요청을 너무 자주 보내고 있습니다. 잠시 후 다시 시도해주세요.",
             500: () => "OpenAI 서버 내부 오류가 발생했습니다. 잠시 후 다시 시도해주세요.",
             503: () => "OpenAI 서비스에 일시적으로 과부하가 발생했습니다. 잠시 후 다시 시도해주세요."
-        };
+        },
         
-        const getErrorMessage = openAIErrorMessages[response.status];
-        const errorMessage = getErrorMessage
-            ? getErrorMessage()
-            : (errorData.error?.message) || "알 수 없는 OpenAI 오류가 발생했습니다.";
-        throw new Error(`OpenAI API 오류: ${errorMessage}`);
-    }
-    
-    if (provider === "cerebras") {
-        const cerebrasErrorMessages = {
-            400: () => "잘못된 요청입니다. 요청 형식을 확인해주세요.",
+        cerebras: {
             401: () => "Cerebras API 키가 올바르지 않습니다. 올바른 API 키를 입력해주세요.",
-            403: () => "API 키에 필요한 권한이 없습니다.",
             404: () => "요청한 모델을 찾을 수 없습니다.",
-            429: () => "비율 제한 초과: 요청을 너무 자주 보내고 있습니다. 잠시 후 다시 시도해주세요.",
             500: () => "Cerebras 서버 내부 오류가 발생했습니다. 잠시 후 다시 시도해주세요.",
             503: () => "Cerebras 서비스에 일시적으로 과부하가 발생했습니다. 잠시 후 다시 시도해주세요."
-        };
-        
-        const getErrorMessage = cerebrasErrorMessages[response.status];
-        const errorMessage = getErrorMessage
-            ? getErrorMessage()
-            : (errorData.error?.message) || "알 수 없는 Cerebras 오류가 발생했습니다.";
-        throw new Error(`Cerebras API 오류: ${errorMessage}`);
-    }
-
-    // Gemini 에러 처리 (기존 로직 유지)
-    const errorMessages = {
-        400: data => (data.error?.message === "API key not valid. Please pass a valid API key."
-            ? "API 키가 올바르지 않습니다. 올바른 API 키를 입력해주세요."
-            : data.error?.status === "FAILED_PRECONDITION"
-                ? "거주 국가에서는 Gemini API 무료 등급을 이용할 수 없습니다. 결제 설정을 확인해주세요."
-                : "요청 형식이 올바르지 않습니다. 입력값을 확인해주세요."),
-        403: () => "API 키에 필요한 권한이 없습니다. 올바른 API 키를 입력해주세요.",
-        404: () => "요청한 리소스를 찾을 수 없습니다.",
-        429: () => "비율 제한 초과: 요청을 너무 자주 보내고 있습니다. 잠시 후 다시 시도해주세요.",
-        500: () => "서버 내부 오류가 발생했습니다. 잠시 후 다시 시도해주세요.",
-        503: () => "서비스에 일시적으로 과부하가 발생했습니다. 잠시 후 다시 시도해주세요.",
-        504: () => "요청 처리 시간이 초과되었습니다. 프롬프트나 컨텍스트의 길이를 줄여주세요."
+        }
     };
 
-    const getErrorMessage = errorMessages[response.status];
-    const errorMessage = getErrorMessage
-        ? getErrorMessage(errorData)
-        : (errorData.error?.message) || "알 수 없는 오류가 발생했습니다.";
-    throw new Error(`Gemini API 오류: ${errorMessage}`);
+    /**
+     * @description 프로바이더별 기본 오류 메시지
+     */
+    static defaultMessages = {
+        gemini: "알 수 없는 Gemini 오류가 발생했습니다.",
+        openai: "알 수 없는 OpenAI 오류가 발생했습니다.",
+        cerebras: "알 수 없는 Cerebras 오류가 발생했습니다."
+    };
+
+    /**
+     * @description 에러 메시지 생성
+     * @param {Response} response fetch 응답 객체
+     * @param {string} provider 프로바이더명
+     * @param {Object} errorData 에러 데이터
+     * @returns {string} 에러 메시지
+     */
+    static generateErrorMessage(response, provider, errorData) {
+        const status = response.status;
+        
+        // 프로바이더별 특수 처리가 있는지 확인
+        const providerMap = this.errorMessageMaps[provider];
+        if (providerMap && providerMap[status]) {
+            const handler = providerMap[status];
+            return typeof handler === 'function' ? handler(errorData) : handler;
+        }
+        
+        // 공통 에러 메시지 확인
+        if (this.errorMessageMaps.common[status]) {
+            return this.errorMessageMaps.common[status];
+        }
+        
+        // API에서 제공하는 에러 메시지 사용
+        const apiErrorMessage = errorData.error?.message;
+        if (apiErrorMessage) {
+            return apiErrorMessage;
+        }
+        
+        // 기본 메시지
+        return this.defaultMessages[provider] || "알 수 없는 API 오류가 발생했습니다.";
+    }
+
+    /**
+     * @description 통합 API 에러 처리
+     * @param {Response} response fetch 응답 객체
+     * @param {string} provider 프로바이더명 (gemini|openai|cerebras)
+     * @throws {Error} 적절한 Error 객체
+     */
+    static async handleError(response, provider = "gemini") {
+        let errorData = {};
+        
+        // 에러 데이터 파싱 시도
+        try {
+            const errorText = await response.text();
+            errorData = safeJsonParse(errorText, `${provider}ApiError`) || {};
+        } catch (parseError) {
+            console.error("API 에러 응답 파싱 실패:", parseError);
+        }
+        
+        // 에러 데이터 로깅
+        if (Object.keys(errorData).length > 0) {
+            console.error("API 오류 응답:", JSON.stringify(errorData, null, 2));
+        } else {
+            console.error("API 오류 응답: 파싱 불가능한 응답");
+        }
+
+        const errorMessage = this.generateErrorMessage(response, provider, errorData);
+        const providerName = provider.charAt(0).toUpperCase() + provider.slice(1);
+        
+        throw new Error(`${providerName} API 오류: ${errorMessage}`);
+    }
+    };
+}
+
+// 레거시 호환성을 위한 함수
+async function handleApiError(response, provider = "gemini") {
+    return ApiErrorHandler.handleError(response, provider);
 }
 
 /**
- * @description Gemini 스트림 응답 처리
- * @param {Response} response fetch 응답 객체
- * @param {Object} options 스트림 모드 옵션, onStream 콜백 함수
- * @returns {Promise<{text: string, usageMetadata: Object}>} 전체 누적 텍스트 및 사용량 데이터
+ * @class StreamResponseProcessor
+ * @description 스트림 응답 처리를 위한 통합 클래스
  */
-async function streamGeminiResponse(response, options) {
-    let fullText = "";
-    let lastUsageMetadata = {};
-    const reader = response.body.getReader();
-    const decoder = new TextDecoder("utf-8");
-
-    /**
-     * @description 청크 데이터 처리
-     * @param {string} chunk 디코딩된 청크 데이터
-     * @returns {Object} { done: boolean, chunkText: string }
-     */
-    function processChunk(chunk) {
-        let chunkText = "";
-        for (let line of chunk.split("\n").map(rawLine => rawLine.trim())) {
-            if (!line.startsWith("data: ")) continue;
-            const dataPart = line.slice(6).trim();
-            if (dataPart === "[DONE]") return { done: true, chunkText };
-
-            try {
-                const jsonChunk = JSON.parse(dataPart);
-                const streamText = extractCandidateText(jsonChunk);
+if (!window.StreamResponseProcessor) {
+    window.StreamResponseProcessor = class StreamResponseProcessor {
+    static strategies = {
+        gemini: {
+            processChunk: (jsonChunk, options) => {
+                const streamText = ResponseExtractor.extractText(jsonChunk, 'gemini');
+                const usageData = ResponseExtractor.getUsageData(jsonChunk, 'gemini');
+                
+                if (streamText && options.onStream) {
+                    options.onStream(streamText);
+                }
+                
+                return { streamText, usageData };
+            },
+            buildResult: (fullText, lastUsageData) => ({
+                text: fullText,
+                usageMetadata: lastUsageData // 레거시 호환성
+            })
+        },
+        openai: {
+            processChunk: (jsonChunk, options) => {
+                const streamText = jsonChunk?.choices?.[0]?.delta?.content;
+                const usageData = jsonChunk.usage;
+                
+                if (streamText && options.onStream) {
+                    options.onStream(streamText);
+                }
+                
+                return { streamText: streamText || "", usageData: usageData || {} };
+            },
+            buildResult: (fullText, lastUsageData) => ({
+                text: fullText,
+                usage: lastUsageData
+            })
+        },
+        cerebras: {
+            processChunk: (jsonChunk, options, context) => {
+                const streamText = jsonChunk?.choices?.[0]?.delta?.content;
+                const usageData = jsonChunk.usage;
+                
                 if (streamText) {
-                    if (typeof(options.onStream) === "function")
-                        options.onStream(streamText);
-                    chunkText += streamText;
-                }
-                // 사용량 메타데이터 저장 (마지막 청크에 포함됨)
-                if (jsonChunk.usageMetadata) {
-                    lastUsageMetadata = jsonChunk.usageMetadata;
-                }
-            } catch (error) {
-                console.error("스트림 청크 파싱 오류(streamGeminiResponse): ", line, error);
-            }
-        }
-        return { done: false, chunkText };
-    }
-
-    let done = false;
-    while (!done) {
-        const { value, done: readerDone } = await reader.read();
-        if (readerDone) break;
-        if (!value) continue;
-        const chunk = decoder.decode(value);
-        const { done: chunkDone, chunkText } = processChunk(chunk);
-        fullText += chunkText;
-        if (chunkDone) {
-            done = true;
-            break;
-        }
-    }
-
-    return { text: fullText, usageMetadata: lastUsageMetadata };
-}
-
-/**
- * @description OpenAI 스트림 응답 처리
- * @param {Response} response fetch 응답 객체
- * @param {Object} options 스트림 모드 옵션, onStream 콜백 함수
- * @returns {Promise<{text: string, usage: Object}>} 전체 누적 텍스트 및 사용량 데이터
- */
-async function streamOpenAIResponse(response, options) {
-    let fullText = "";
-    let lastUsage = {};
-    const reader = response.body.getReader();
-    const decoder = new TextDecoder("utf-8");
-
-    /**
-     * @description OpenAI 청크 데이터 처리
-     * @param {string} chunk 디코딩된 청크 데이터
-     * @returns {Object} { done: boolean, chunkText: string }
-     */
-    function processOpenAIChunk(chunk) {
-        let chunkText = "";
-        for (let line of chunk.split("\n").map(rawLine => rawLine.trim())) {
-            if (!line.startsWith("data: ")) continue;
-            const dataPart = line.slice(6).trim();
-            if (dataPart === "[DONE]") return { done: true, chunkText };
-
-            try {
-                const jsonChunk = JSON.parse(dataPart);
-                const deltaContent = jsonChunk?.choices?.[0]?.delta?.content;
-                if (deltaContent) {
-                    if (typeof(options.onStream) === "function")
-                        options.onStream(deltaContent);
-                    chunkText += deltaContent;
-                }
-                // 사용량 데이터 저장 (마지막 청크에 포함됨)
-                if (jsonChunk.usage) {
-                    lastUsage = jsonChunk.usage;
-                }
-            } catch (error) {
-                console.error("OpenAI 스트림 청크 파싱 오류(streamOpenAIResponse): ", line, error);
-            }
-        }
-        return { done: false, chunkText };
-    }
-
-    let done = false;
-    while (!done) {
-        const { value, done: readerDone } = await reader.read();
-        if (readerDone) break;
-        if (!value) continue;
-        const chunk = decoder.decode(value);
-        const { done: chunkDone, chunkText } = processOpenAIChunk(chunk);
-        fullText += chunkText;
-        if (chunkDone) {
-            done = true;
-            break;
-        }
-    }
-
-    return { text: fullText, usage: lastUsage };
-}
-
-/**
- * @description Cerebras 스트림 응답 처리
- * @param {Response} response fetch 응답 객체
- * @param {Object} options 스트림 모드 옵션, onStream 콜백 함수
- * @returns {Promise<{text: string, thinking?: string, usage: Object}>} 전체 누적 텍스트, 추론 내용 및 사용량 데이터
- */
-async function streamCerebrasResponse(response, options) {
-    let fullText = "";
-    let lastUsage = {};
-    const reader = response.body.getReader();
-    const decoder = new TextDecoder("utf-8");
-    let thinkingProcessed = false;
-    let buffer = ""; // JSON 파싱을 위한 버퍼
-
-    /**
-     * @description Cerebras 청크 데이터 처리
-     * @param {string} chunk 디코딩된 청크 데이터
-     * @returns {Object} { done: boolean, chunkText: string }
-     */
-    function processCerebrasChunk(chunk) {
-        let chunkText = "";
-        buffer += chunk;
-        const lines = buffer.split("\n");
-        
-        // 마지막 라인은 불완전할 수 있으므로 버퍼에 보관
-        buffer = lines.pop() || "";
-        
-        for (let line of lines.map(rawLine => rawLine.trim())) {
-            if (!line.startsWith("data: ")) continue;
-            const dataPart = line.slice(6).trim();
-            if (dataPart === "[DONE]") return { done: true, chunkText };
-
-            try {
-                const jsonChunk = JSON.parse(dataPart);
-                const deltaContent = jsonChunk?.choices?.[0]?.delta?.content;
-                if (deltaContent) {
-                    chunkText += deltaContent;
-                    
-                    const currentFullText = fullText + chunkText;
-                    
-                    // Qwen Thinking 모델인지 확인
-                    const modelName = options.model || "";
-                    const isThinkingModel = isQwenThinkingModel(modelName);
+                    const isThinkingModel = options.model && isQwenThinkingModel(options.model);
                     
                     if (isThinkingModel) {
-                        // Thinking 모델의 경우 추론 처리
-                        const parsedContent = parseQwenThinking(currentFullText);
+                        // 누적된 전체 텍스트에 현재 스트림 텍스트 추가
+                        context.accumulatedText = (context.accumulatedText || "") + streamText;
+                        const parsedContent = parseQwenThinking(context.accumulatedText);
                         
-                        // </think> 태그가 없다면 추론 과정 중
-                        if (!currentFullText.includes("</think>")) {
-                            // 추론 과정 스트리밍
-                            if (options.onThinking && typeof(options.onThinking) === "function") {
-                                options.onThinking(currentFullText);
+                        if (!context.accumulatedText.includes("</think>")) {
+                            // 추론 과정 중
+                            if (options.onThinking) {
+                                options.onThinking(context.accumulatedText);
                             }
                         } else {
                             // </think> 태그 발견 후 처리
-                            if (!thinkingProcessed) {
-                                // 최종 추론 내용 전달
+                            if (!context.thinkingProcessed) {
                                 if (parsedContent.thinking && options.onThinking) {
                                     options.onThinking(parsedContent.thinking);
                                 }
-                                thinkingProcessed = true;
+                                context.thinkingProcessed = true;
                             }
                             
-                            // 응답 부분 스트리밍
-                            if (parsedContent.response && typeof(options.onStream) === "function") {
-                                const previousFullText = fullText + (chunkText.substring(0, chunkText.length - deltaContent.length));
-                                const previousParsed = parseQwenThinking(previousFullText);
-                                const previousResponse = previousParsed.response || "";
-                                const newResponse = parsedContent.response.substring(previousResponse.length);
+                            // 응답 부분 스트리밍 (중복 방지)
+                            if (parsedContent.response && options.onStream) {
+                                const previousResponseLength = context.lastResponseLength || 0;
+                                const currentResponseLength = parsedContent.response.length;
                                 
-                                if (newResponse) {
-                                    options.onStream(newResponse);
+                                if (currentResponseLength > previousResponseLength) {
+                                    const newResponse = parsedContent.response.substring(previousResponseLength);
+                                    if (newResponse) {
+                                        options.onStream(newResponse);
+                                        context.lastResponseLength = currentResponseLength;
+                                    }
                                 }
                             }
                         }
                     } else {
-                        // Instruct 모델의 경우 직접 스트리밍 (추론 처리 없음)
-                        if (options.onStream && typeof(options.onStream) === "function") {
-                            options.onStream(deltaContent);
+                        // Instruct 모델의 경우 직접 스트리밍
+                        if (options.onStream) {
+                            options.onStream(streamText);
                         }
                     }
                 }
-                // 사용량 데이터 저장 (마지막 청크에 포함됨)
-                if (jsonChunk.usage) {
-                    lastUsage = jsonChunk.usage;
+                
+                return { streamText: streamText || "", usageData: usageData || {} };
+            },
+            buildResult: (fullText, lastUsageData, context) => {
+                const result = { usage: lastUsageData };
+                
+                // Thinking 모델의 경우 누적된 텍스트에서 응답 부분만 추출
+                if (context.accumulatedText && context.accumulatedText.includes("</think>")) {
+                    const finalParsed = parseQwenThinking(context.accumulatedText);
+                    result.text = finalParsed.response || fullText;
+                    if (finalParsed.thinking) {
+                        result.thinking = finalParsed.thinking;
+                    }
+                } else {
+                    result.text = fullText;
+                    if (context.finalThinking) {
+                        result.thinking = context.finalThinking;
+                    }
                 }
-            } catch (error) {
-                // JSON 파싱 오류는 불완전한 청크일 가능성이 높으므로 경고 수준으로 로깅
-                console.warn("Cerebras 스트림 청크 파싱 경고 (불완전한 JSON일 수 있음):", dataPart.substring(0, 100) + "...");
+                
+                return result;
             }
         }
-        return { done: false, chunkText };
-    }
-
-    let done = false;
-    while (!done) {
-        const { value, done: readerDone } = await reader.read();
-        if (readerDone) {
-            // 마지막에 남은 버퍼 처리
-            if (buffer.trim()) {
-                const { chunkText } = processCerebrasChunk("\n");
-                fullText += chunkText;
-            }
-            break;
-        }
-        if (!value) continue;
-        const chunk = decoder.decode(value);
-        const { done: chunkDone, chunkText } = processCerebrasChunk(chunk);
-        fullText += chunkText;
-        if (chunkDone) {
-            done = true;
-            break;
-        }
-    }
-
-    // 최종 결과 파싱
-    const finalParsed = parseQwenThinking(fullText);
-    const result = { 
-        text: finalParsed.response || fullText, 
-        usage: lastUsage 
     };
-    
-    if (finalParsed.thinking) {
-        result.thinking = finalParsed.thinking;
-    }
-    
-    return result;
-}
 
-/**
- * @description Gemini 일반 응답 처리
- * @param {Response} response fetch 응답 객체
- * @returns {Promise<{text: string, usageMetadata: Object}>} 번역 결과 및 사용량 데이터
- */
-async function standardGeminiResponse(response) {
-    const text = await response.text();
-    try {
-        const json = JSON.parse(text);
-        return {
-            text: extractCandidateText(json),
-            usageMetadata: json.usageMetadata || {}
-        };
-    } catch (err) {
-        console.error("JSON 파싱 오류(standardGeminiResponse): ", err);
-        throw err;
-    }
-}
+    /**
+     * @description 통합 스트림 응답 처리
+     * @param {Response} response fetch 응답 객체
+     * @param {string} provider 프로바이더명 (gemini|openai|cerebras)
+     * @param {Object} options 스트림 옵션
+     * @returns {Promise<Object>} 스트림 처리 결과
+     */
+    static async processStream(response, provider, options) {
+        const strategy = this.strategies[provider];
+        if (!strategy) {
+            throw new Error(`지원되지 않는 프로바이더: ${provider}`);
+        }
 
-/**
- * @description OpenAI 일반 응답 처리
- * @param {Response} response fetch 응답 객체
- * @returns {Promise<{text: string, usage: Object}>} 번역 결과 및 사용량 데이터
- */
-async function standardOpenAIResponse(response) {
-    const text = await response.text();
-    try {
-        const json = JSON.parse(text);
-        return {
-            text: extractOpenAIText(json),
-            usage: json.usage || {}
-        };
-    } catch (err) {
-        console.error("JSON 파싱 오류(standardOpenAIResponse): ", err);
-        throw err;
-    }
-}
-
-/**
- * @description Cerebras 일반 응답 처리
- * @param {Response} response fetch 응답 객체
- * @param {string} model 모델명
- * @returns {Promise<{text: string, thinking?: string, usage: Object}>} 번역 결과, 추론 내용 및 사용량 데이터
- */
-async function standardCerebrasResponse(response, model) {
-    const text = await response.text();
-    try {
-        const json = JSON.parse(text);
-        const rawText = extractCerebrasText(json);
+        let fullText = "";
+        let lastUsageData = {};
+        let buffer = ""; // JSON 파싱을 위한 버퍼
+        const reader = response.body.getReader();
+        const decoder = new TextDecoder("utf-8");
         
-        const result = {
-            usage: json.usage || {}
+        // Cerebras용 컨텍스트
+        const context = {
+            thinkingProcessed: false,
+            finalThinking: null,
+            fullText: "",
+            currentChunkText: "",
+            accumulatedText: "",
+            lastResponseLength: 0
         };
+
+        const processChunk = (chunk) => {
+            let chunkText = "";
+            if (provider === 'cerebras') {
+                buffer += chunk;
+                const lines = buffer.split("\n");
+                buffer = lines.pop() || "";
+                chunk = lines.join("\n");
+            }
+
+            for (let line of chunk.split("\n").map(rawLine => rawLine.trim())) {
+                if (!line.startsWith("data: ")) continue;
+                const dataPart = line.slice(6).trim();
+                if (dataPart === "[DONE]") return { done: true, chunkText };
+
+                const jsonChunk = safeJsonParse(dataPart, `stream${provider}Chunk`);
+                if (!jsonChunk) continue;
+
+                context.fullText = fullText;
+                context.currentChunkText = chunkText;
+                
+                const { streamText, usageData } = strategy.processChunk(jsonChunk, options, context);
+                
+                if (streamText) {
+                    chunkText += streamText;
+                }
+                
+                if (usageData && Object.keys(usageData).length > 0) {
+                    lastUsageData = usageData;
+                }
+            }
+            
+            return { done: false, chunkText };
+        };
+
+        let done = false;
+        while (!done) {
+            const { value, done: readerDone } = await reader.read();
+            if (readerDone) {
+                // Cerebras의 경우 마지막 버퍼 처리
+                if (provider === 'cerebras' && buffer.trim()) {
+                    const { chunkText } = processChunk("\n");
+                    fullText += chunkText;
+                }
+                break;
+            }
+            if (!value) continue;
+            
+            const chunk = decoder.decode(value);
+            const { done: chunkDone, chunkText } = processChunk(chunk);
+            fullText += chunkText;
+            
+            if (chunkDone) {
+                done = true;
+                break;
+            }
+        }
+
+        // 최종 결과 처리 (Cerebras thinking 모델용)
+        if (provider === 'cerebras' && options.model && isQwenThinkingModel(options.model)) {
+            if (context.accumulatedText && context.accumulatedText.includes("</think>")) {
+                const finalParsed = parseQwenThinking(context.accumulatedText);
+                context.finalThinking = finalParsed.thinking;
+                fullText = finalParsed.response || fullText;
+            }
+        }
+
+        return strategy.buildResult(fullText, lastUsageData, context);
+    }
+    };
+}
+
+// 레거시 호환성을 위한 함수
+async function streamGeminiResponse(response, options) {
+    return StreamResponseProcessor.processStream(response, 'gemini', options);
+}
+
+// 레거시 호환성을 위한 함수들
+async function streamOpenAIResponse(response, options) {
+    return StreamResponseProcessor.processStream(response, 'openai', options);
+}
+
+async function streamCerebrasResponse(response, options) {
+    return StreamResponseProcessor.processStream(response, 'cerebras', options);
+}
+
+/**
+ * @class StandardResponseProcessor
+ * @description 표준 응답 처리를 위한 통합 클래스
+ */
+if (!window.StandardResponseProcessor) {
+    window.StandardResponseProcessor = class StandardResponseProcessor {
+    /**
+     * @description 통합 표준 응답 처리
+     * @param {Response} response fetch 응답 객체
+     * @param {string} provider 프로바이더명 (gemini|openai|cerebras)
+     * @param {string} [model] 모델명 (Cerebras thinking 모델 처리용)
+     * @returns {Promise<Object>} 처리된 응답 데이터
+     */
+    static async processResponse(response, provider, model = null) {
+        const text = await response.text();
+        const json = safeJsonParse(text, `standard${provider.charAt(0).toUpperCase() + provider.slice(1)}Response`);
         
-        // Thinking 모델인지 확인하여 처리 방식 결정
-        if (isQwenThinkingModel(model)) {
-            const parsed = parseQwenThinking(rawText);
-            result.text = parsed.response || rawText;
+        if (!json) {
+            throw new Error(`${provider} API 응답 파싱 실패`);
+        }
+
+        const extractedText = ResponseExtractor.extractText(json, provider);
+        const usageData = ResponseExtractor.getUsageData(json, provider);
+        
+        const result = { 
+            text: extractedText,
+            usage: usageData  // 통합된 사용량 필드명
+        };
+
+        // Gemini의 경우 레거시 호환성을 위해 usageMetadata도 포함
+        if (provider === 'gemini') {
+            result.usageMetadata = usageData;
+        }
+
+        // Cerebras thinking 모델의 특별 처리
+        if (provider === 'cerebras' && model && isQwenThinkingModel(model)) {
+            const parsed = parseQwenThinking(extractedText);
+            result.text = parsed.response || extractedText;
             if (parsed.thinking) {
                 result.thinking = parsed.thinking;
             }
-        } else {
-            // Instruct 모델의 경우 그대로 반환
-            result.text = rawText;
         }
-        
+
         return result;
-    } catch (err) {
-        console.error("JSON 파싱 오류(standardCerebrasResponse): ", err);
-        throw err;
     }
+    };
+}
+
+// 레거시 호환성을 위한 함수들
+async function standardGeminiResponse(response) {
+    return StandardResponseProcessor.processResponse(response, 'gemini');
+}
+
+async function standardOpenAIResponse(response) {
+    return StandardResponseProcessor.processResponse(response, 'openai');
+}
+
+async function standardCerebrasResponse(response, model) {
+    return StandardResponseProcessor.processResponse(response, 'cerebras', model);
 }
 
 
@@ -971,4 +1032,12 @@ ${text}
             }
         }
     };
+}
+
+// 전역 함수들 할당
+if (typeof window !== 'undefined') {
+    window.safeJsonParse = safeJsonParse;
+    window.parseQwenThinking = parseQwenThinking;
+    window.isQwenThinkingModel = isQwenThinkingModel;
+}
 }
