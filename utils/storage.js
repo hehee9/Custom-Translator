@@ -298,15 +298,8 @@ if (typeof(window) !== "undefined" && !window.TranslatorStorage) {
                 "gemini-2.5-pro": { inputTokenCost: 1.25, cachedInputTokenCost: 0.3125, outputTokenCost: 10.00 },
                 
                 // OpenAI 모델들 (1M 토큰당 USD)
-                "gpt-4o": { inputTokenCost: 2.50, cachedInputTokenCost: 1.25, outputTokenCost: 10.00 },
-                "gpt-4o-mini": { inputTokenCost: 0.15, cachedInputTokenCost: 0.075, outputTokenCost: 0.60 },
-                "gpt-4-turbo": { inputTokenCost: 10.00, cachedInputTokenCost: 5.00, outputTokenCost: 30.00 },
-                "gpt-4": { inputTokenCost: 30.00, cachedInputTokenCost: 15.00, outputTokenCost: 60.00 },
-                "gpt-3.5-turbo": { inputTokenCost: 0.50, cachedInputTokenCost: 0.25, outputTokenCost: 1.50 },
                 "gpt-5-chat-latest": { inputTokenCost: 1.25, cachedInputTokenCost: 0.125, outputTokenCost: 10.00 },
-                "o1-preview": { inputTokenCost: 15.00, cachedInputTokenCost: 7.50, outputTokenCost: 60.00 },
-                "o1-mini": { inputTokenCost: 3.00, cachedInputTokenCost: 1.50, outputTokenCost: 12.00 },
-                
+
                 // Cerebras 모델들 (1M 토큰당 USD)
                 "qwen-3-235b-a22b-instruct-2507": { inputTokenCost: 0.60, cachedInputTokenCost: 0.60, outputTokenCost: 1.20 },
                 "qwen-3-235b-a22b-thinking-2507": { inputTokenCost: 0.60, cachedInputTokenCost: 0.60, outputTokenCost: 1.20 }
