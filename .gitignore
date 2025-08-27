@@ -1,0 +1,15 @@
+# Claude Code 관련 파일들
+.claude/
+CLAUDE.md
+
+# 개발 도구
+.vscode/
+.idea/
+
+# 시스템 파일
+.DS_Store
+Thumbs.db
+
+# 임시 파일
+*.tmp
+*.log

@@ -8,32 +8,35 @@
   <div class="container">
     <!-- 네비게이션 -->
     <nav class="popup-nav">
-      <button class="nav-btn" data-target="apiSection">설정</button>
-      <button class="nav-btn" data-target="glossarySection">단어장</button>
+      <button class="nav-btn active" data-target="quickSettingsSection" data-i18n="quickSettings">빠른 설정</button>
+      <button class="nav-btn" data-target="glossarySection" data-i18n="glossary">단어장</button>
     </nav>
     
-    <!-- 설정 탭 -->
-    <div id="apiSection" class="settings-section api-section">
+    <!-- 빠른 설정 탭 -->
+    <div id="quickSettingsSection" class="settings-section quick-settings-section active">
       <div class="section">
-        <button id="apiKeyIssue" class="api-issue-btn">API KEY 발급</button>
-        <div class="api-warning">※유료 계정에 연동 시 요금이 부과됨</div>
-        <div class="api-key-row">
-          <input type="password" id="apiKey" placeholder="Gemini API 키를 입력하세요">
-          <button id="saveApiKey">저장</button>
-        </div>
         
         <!-- 번역 모델 선택 -->
         <div class="model-selection">
-          <h3>번역 모델 선택</h3>
+          <h3 data-i18n="modelSelectionTitle">번역 모델 선택</h3>
           <select id="modelSelect">
-            <option value="gemini-2.0-flash">Gemini 2.0 Flash - 매우 빠름, 준수한 성능</option>
-            <option value="gemini-2.5-flash">Gemini 2.5 Flash - 약간 빠름, 좋은 성능</option>
-            <option value="gemini-2.5-pro">Gemini 2.5 Pro - 보통, 뛰어난 성능</option>
+            <optgroup label="Gemini">
+              <option value="gemini-2.0-flash" data-i18n="gemini20FlashFullDesc">Gemini 2.0 Flash</option>
+              <option value="gemini-2.5-flash" data-i18n="gemini25FlashFullDesc">Gemini 2.5 Flash</option>
+              <option value="gemini-2.5-pro" data-i18n="gemini25ProFullDesc">Gemini 2.5 Pro</option>
+            </optgroup>
+            <optgroup label="OpenAI">
+              <option value="gpt-5-chat-latest" data-i18n="gpt5ChatDesc">GPT-5 Chat</option>
+            </optgroup>
+            <optgroup label="Alibaba (Cerebras)">
+              <option value="qwen-3-235b-a22b-instruct-2507" data-i18n="qwen3235bInstructDesc">Qwen3 235B Instruct</option>
+              <option value="qwen-3-235b-a22b-thinking-2507" data-i18n="qwen3235bThinkingDesc">Qwen3 235B Thinking</option>
+            </optgroup>
           </select>
         </div>
         
         <div class="language-selection">
-          <h3>번역 언어 선택</h3>
+          <h3 data-i18n="languageSelectionTitle">번역 언어 선택</h3>
           <select id="languageSelect">
             <option value="Korean">한국어</option>
             <option value="English">English</option>
@@ -57,47 +60,108 @@
           </select>
         </div>
         
-        <div class="usage-row">
-          <span id="usageCount">0 / 1500</span>
-          <div class="usage-graph-container">
-            <div id="dailyUsageGraph" class="usage-graph"></div>
+        <!-- 현재 사이트 단어장 설정 -->
+        <div class="current-site-settings">
+          <div class="current-site-header">
+            <h3 data-i18n="currentSiteGlossaryTitle">현재 사이트 단어장</h3>
+            <button id="toggleSiteSettings" class="toggle-btn" data-i18n="configure">설정</button>
+          </div>
+          <div id="currentSiteInfo" class="current-site-info">
+            <div class="site-domain-display">
+              <span class="site-icon">🌐</span>
+              <span id="currentDomainText" class="domain-text">-</span>
+            </div>
+            <div class="site-status">
+              <span id="siteStatusText" data-i18n="useGlobalSettings">전역 설정 사용</span>
+            </div>
+          </div>
+          <div id="siteSettingsPanel" class="site-settings-panel hidden">
+            <div class="site-settings-options">
+              <div class="domain-match-option">
+                <label>
+                  <input type="checkbox" id="exactDomainMatch">
+                  <span data-i18n="exactDomainMatchOption">정확한 도메인만 일치</span>
+                </label>
+                <div class="option-help" data-i18n="exactDomainHelp">체크 시 서브도메인 제외하고 정확히 일치하는 도메인에만 적용</div>
+              </div>
+              <div class="site-presets-selection">
+                <h4 data-i18n="selectPresetsForSite">이 사이트에 사용할 단어장:</h4>
+                <div id="sitePresetsList" class="site-presets-list">
+                  <!-- 동적으로 생성됩니다 -->
+                </div>
+              </div>
+              <div class="site-settings-actions">
+                <button id="applySiteSettings" class="btn btn-primary" data-i18n="apply">적용</button>
+                <button id="resetSiteSettings" class="btn btn-secondary" data-i18n="reset">초기화</button>
+                <button id="cancelSiteSettings" class="btn btn-secondary" data-i18n="cancel">취소</button>
+              </div>
+            </div>
           </div>
         </div>
-        <div id="apiKeyMsg" class="message"></div>
+        
+        
+        <!-- 고급 설정 버튼 -->
+        <div class="advanced-settings-link">
+          <button id="openAdvancedSettings" class="advanced-btn" data-i18n="advancedSettings">
+            <span class="icon">⚙️</span>
+            <span data-i18n="advancedSettings">고급 설정</span>
+          </button>
+        </div>
       </div>
     </div>
     
     <!-- 단어장 탭 -->
     <div id="glossarySection" class="settings-section glossary-section">
       <div class="section">
-        <div class="glossary-actions-top">
-          <button id="importGlossary" class="small-action-btn">단어장 불러오기</button>
-          <button id="exportGlossary" class="small-action-btn">단어장 내보내기</button>
-        </div>
-        <div class="glossary-input-container">
-          <div class="glossary-input">
-            <input type="text" id="sourceWord" placeholder="원본 단어">
-            <span class="arrow">→</span>
-            <input type="text" id="targetWord" placeholder="번역 단어">
-            <button id="addWord">추가</button>
+        
+        <!-- 단어장 프리셋 관리 -->
+        <div class="preset-management">
+          <h3 data-i18n="glossaryPresets">단어장 프리셋</h3>
+          
+          <div class="preset-actions">
+            <button id="createPreset" class="small-action-btn" data-i18n="createPreset">새 프리셋</button>
+            <button id="importGlossary" class="small-action-btn" data-i18n="importGlossary">단어장 불러오기</button>
+            <div class="export-dropdown">
+              <button id="exportDropdown" class="small-action-btn dropdown-toggle" data-i18n="exportGlossary">내보내기 ▼</button>
+              <div id="exportDropdownMenu" class="dropdown-menu">
+                <button id="exportSelected" data-i18n="exportSelected">선택한 프리셋 내보내기</button>
+                <button id="exportAll" data-i18n="exportAll">모든 프리셋 내보내기</button>
+              </div>
+            </div>
+          </div>
+
+          <div id="presetList" class="preset-list">
+            <!-- 프리셋 목록이 여기에 표시됩니다 -->
           </div>
         </div>
-        <!-- 검색, 정렬 -->
-        <div class="glossary-filter">
-          <input type="text" id="searchGlossary" placeholder="🔍 검색">
-          <select id="sortOrder">
-            <option value="recent">최신순</option>
-            <option value="old">오래된순</option>
-            <option value="modified">수정순</option>
-            <option value="modified_reverse">수정역순</option>
-            <option value="asc">이름순</option>
-            <option value="desc">이름역순</option>
-          </select>
+
+        <!-- 고급 설정 버튼 -->
+        <div class="advanced-settings-link">
+          <button id="openAdvancedSettingsGlossary" class="advanced-btn" data-i18n="advancedSettings">
+            <span class="icon">⚙️</span>
+            <span data-i18n="advancedSettings">고급 설정</span>
+          </button>
         </div>
-        <div id="glossaryList" class="glossary-list">
-          <!-- 단어장 항목 추가 -->
+
+      </div>
+    </div>
+  </div>
+  
+  <!-- 커스텀 확인 모달 -->
+  <div id="customConfirmModal" class="modal custom-dialog">
+    <div class="modal-content dialog-content">
+      <div class="dialog-header">
+        <div class="dialog-icon">
+          <span id="confirmDialogIcon">⚠️</span>
         </div>
-        <div id="glossaryToggle" class="glossary-toggle">▼</div>
+        <div class="dialog-text">
+          <h3 id="confirmDialogTitle" data-i18n="confirm">확인</h3>
+          <p id="confirmDialogMessage" data-i18n="confirmMessage">정말로 실행하시겠습니까?</p>
+        </div>
+      </div>
+      <div class="dialog-footer">
+        <button id="confirmDialogCancel" class="btn btn-secondary" data-i18n="cancel">취소</button>
+        <button id="confirmDialogConfirm" class="btn btn-primary" data-i18n="confirm">확인</button>
       </div>
     </div>
   </div>

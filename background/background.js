@@ -1,30 +1,21 @@
+// Chrome Extension Manifest V3에서는 importScripts 대신 동적 import 사용
+// 필요한 경우에만 i18n을 로드하도록 수정
+
 /** @description 백그라운드 작업 처리 */
 class BackgroundService {
     activeTabsMap = new Map();
     portMap = new Map();
-
-    // 언어별 컨텍스트 메뉴 타이틀
-    menuTitles = {
-        "Korean": "선택한 텍스트 번역",
-        "English": "Translate selected text",
-        "Japanese": "選択したテキストを翻訳",
-        "Chinese": "翻译所选文本",
-        "Chinese_TW": "翻譯選取的文字",
-        "Spanish": "Traducir texto seleccionado",
-        "French": "Traduire le texte sélectionné",
-        "German": "Ausgewählten Text übersetzen",
-        "Italian": "Traduci testo selezionato",
-        "Russian": "Перевести выделенный текст",
-        "Portuguese": "Traduzir texto selecionado",
-        "Dutch": "Geselecteerde tekst vertalen",
-        "Indonesian": "Terjemahkan teks yang dipilih",
-        "Filipino": "Isalin ang napiling teksto",
-        "Malay": "Terjemah teks yang dipilih",
-        "Arabic": "ترجمة النص المحدد",
-        "Hindi": "चयनित पाठ का अनुवाद करें",
-        "Vietnamese": "Dịch văn bản đã chọn",
-        "Thai": "แปลข้อความที่เลือก"
-    };
+    
+    // 제한된 URL 관련 에러 패턴 (공통 사용)
+    static restrictedUrlErrorPatterns = [
+        "chrome://",
+        "Cannot access",
+        "Frame with ID",
+        "was removed",
+        "extension://",
+        "back/forward cache",
+        "Receiving end does not exist"
+    ];
 
     constructor() {
         this.removeContextMenu();
@@ -33,13 +24,26 @@ class BackgroundService {
         this.setupPortListener();
         this.setupMessageListener();
     }
+    
+    /**
+     * @description 제한된 URL 관련 에러인지 확인
+     * @param {Error} error 확인할 에러 객체
+     * @returns {boolean} 제한된 URL 관련 에러 여부
+     */
+    static isRestrictedUrlError(error) {
+        if (!error?.message) return false;
+        return this.restrictedUrlErrorPatterns.some(pattern => error.message.includes(pattern));
+    }
 
     /** @description 페이지 네비게이션 이벤트 리스너 설정 */
     setupNavigationListener() {
         chrome.webNavigation.onCommitted.addListener(async ({ tabId, frameId }) => {
             if (frameId === 0) {
                 this.activeTabsMap.set(tabId, false);
-                await this.ensureScriptInjected(tabId);
+                // 접근 가능한 URL인지 확인 후 스크립트 주입
+                if (await this.isAccessibleUrl(tabId)) {
+                    await this.ensureScriptInjected(tabId);
+                }
             }
         });
 
@@ -69,12 +73,25 @@ class BackgroundService {
         try {
             // 저장된 언어 가져오기
             const language = await this.getTranslationLanguage() || "Korean";
-            // 언어에 맞는 메뉴 타이틀 사용
-            const menuTitle = this.menuTitles[language] || this.menuTitles["Korean"];
+            
+            // 언어별 컨텍스트 메뉴 타이틀
+            const menuTitles = {
+                "Korean": "선택한 텍스트 번역",
+                "English": "Translate selected text",
+                "Japanese": "選択したテキストを翻訳",
+                "Chinese": "翻译所选文本",
+                "Chinese_TW": "翻譯所選文字",
+                "Spanish": "Traducir texto seleccionado",
+                "French": "Traduire le texte sélectionné",
+                "German": "Ausgewählten Text übersetzen",
+                "Italian": "Traduci testo selezionato",
+                "Russian": "Перевести выделенный текст",
+                "Portuguese": "Traduzir texto selecionado"
+            };
             
             chrome.contextMenus.create({
                 id: "translate",
-                title: menuTitle,
+                title: menuTitles[language] || "선택한 텍스트 번역",
                 contexts: ["selection"]
             },
             () => {
@@ -118,8 +135,7 @@ class BackgroundService {
     async ensureScriptInjected(tabId) {
         try {
             if (!await this.isAccessibleUrl(tabId)) {
-                console.log("접근 불가능한 탭 건너뛰기:", tabId);
-                return false;
+                return false; // 로그는 isAccessibleUrl에서 이미 출력됨
             }
 
             const isReady = await this.pingContentScript(tabId);
@@ -129,7 +145,11 @@ class BackgroundService {
             }
             return true;
         } catch (error) {
-            console.error("컨텐츠 스크립트 주입 확인 실패(ensureScriptInjected):", error);
+            // 제한된 URL 관련 에러는 무시하고 조용히 처리
+            if (BackgroundService.isRestrictedUrlError(error)) {
+                return false;
+            }
+            console.error(`탭 ${tabId}: 컨텐츠 스크립트 주입 확인 실패 -`, error.message);
             return false;
         }
     }
@@ -141,8 +161,7 @@ class BackgroundService {
     async injectContentScript(tabId) {
         try {
             if (!await this.isAccessibleUrl(tabId)) {
-                console.log("접근 불가능한 탭 건너뛰기(injectContentScript):", tabId);
-                return;
+                return; // 로그는 isAccessibleUrl에서 이미 출력됨
             }
 
             /** @description 의존성 순서대로 스크립트 주입 */
@@ -167,7 +186,11 @@ class BackgroundService {
                 files: ["content/content.css"]
             });
         } catch (error) {
-            console.error("컨텐츠 스크립트 주입 실패(injectContentScript):", error);
+            // 제한된 URL 관련 에러는 상위에서 조용히 처리되도록 재전파
+            if (BackgroundService.isRestrictedUrlError(error)) {
+                throw error;
+            }
+            console.error(`탭 ${tabId}: 컨텐츠 스크립트 주입 실패 -`, error.message);
             throw error;
         }
     }
@@ -180,9 +203,57 @@ class BackgroundService {
     async isAccessibleUrl(tabId) {
         try {
             const tab = await chrome.tabs.get(tabId);
-            return tab?.url && !tab.url.startsWith("chrome://");
+            if (!tab?.url) {
+                return false;
+            }
+            
+            // 접근 불가능한 URL 패턴 확인
+            const restrictedPrefixes = [
+                "chrome://",
+                "chrome-extension://", 
+                "moz-extension://",
+                "edge-extension://",
+                "safari-extension://",
+                "about:",
+                "data:",
+                "javascript:",
+                "file://",
+                "ftp://",
+                "chrome-search://",
+                "chrome-native://",
+                "devtools://",
+                "view-source:",
+                "wyciwyg://"
+            ];
+
+            // 특수 도메인 패턴 확인
+            const restrictedDomains = [
+                "chrome.google.com/webstore",
+                "addons.mozilla.org", 
+                "microsoftedge.microsoft.com"
+            ];
+            
+            // URL 프리픽스 검사
+            const isRestrictedPrefix = restrictedPrefixes.some(prefix => tab.url.startsWith(prefix));
+            
+            if (isRestrictedPrefix) {
+                return false;
+            }
+
+            // 특수 도메인 검사
+            const isRestrictedDomain = restrictedDomains.some(domain => tab.url.includes(domain));
+            
+            if (isRestrictedDomain) {
+                return false;
+            }
+
+            // 빈 페이지나 에러 페이지 검사
+            if (tab.url === "about:blank" || tab.url.includes("chrome-error://")) {
+                return false;
+            }
+            
+            return true;
         } catch (error) {
-            console.log("탭 접근 확인 실패(isAccessibleUrl):", error);
             return false;
         }
     }
@@ -210,14 +281,21 @@ class BackgroundService {
     async handleTranslation(text, tabId) {
         try {
             if (!await this.isAccessibleUrl(tabId)) {
-                console.log("접근 불가능한 탭 건너뛰기:", tabId);
+                return; // 로그는 isAccessibleUrl에서 이미 출력됨
+            }
+
+            const scriptInjected = await this.ensureScriptInjected(tabId);
+            if (!scriptInjected) {
                 return;
             }
 
-            await this.ensureScriptInjected(tabId);
             await this.sendTranslationMessage(text, tabId);
         } catch (error) {
-            console.error("번역 실패(handleTranslation):", error);
+            // 제한된 URL 관련 에러는 조용히 처리
+            if (BackgroundService.isRestrictedUrlError(error)) {
+                return;
+            }
+            console.error(`탭 ${tabId}: 번역 처리 실패 -`, error.message);
         }
     }
 
@@ -228,18 +306,33 @@ class BackgroundService {
      * @returns {Promise<boolean>} 메시지 전송 성공 여부
      */
     async sendTranslationMessage(text, tabId) {
+        // 현재 탭의 도메인 정보 가져오기
+        let domain = null;
+        try {
+            const tab = await chrome.tabs.get(tabId);
+            if (tab?.url) {
+                const url = new URL(tab.url);
+                domain = url.hostname;
+            }
+        } catch (error) {
+            console.warn("도메인 정보 가져오기 실패:", error);
+        }
+        
         return new Promise(resolve => {
             chrome.tabs.sendMessage(tabId, {
                 action: "translate",
-                text: text
+                text: text,
+                domain: domain
             },
             _ => {
                 if (chrome.runtime.lastError) {
-                    if (chrome.runtime.lastError.message.includes("back/forward cache")) {
-                        console.warn("메시지 채널이 닫힘(sendTranslationMessage):", chrome.runtime.lastError.message);
+                    const errorMsg = chrome.runtime.lastError.message;
+                    
+                    // 제한된 URL 관련 에러들은 조용히 처리
+                    if (BackgroundService.restrictedUrlErrorPatterns.some(pattern => errorMsg.includes(pattern))) {
                         resolve(false);
                     } else {
-                        console.error("메시지 전송 실패(sendTranslationMessage):", chrome.runtime.lastError);
+                        console.warn(`탭 ${tabId}: 메시지 전송 실패 -`, errorMsg);
                         resolve(false);
                     }
                 } else resolve(true);
@@ -259,12 +352,15 @@ class BackgroundService {
                 const tabs = await chrome.tabs.query({});
                 for (const tab of tabs) {
                     try {
-                        chrome.tabs.sendMessage(tab.id, {
-                            action: "languageChanged",
-                            language: message.language
-                        }).catch(() => {
-                            // 일부 탭에서 오류가 발생해도 계속 진행
-                        });
+                        // 접근 가능한 탭인지 확인
+                        if (await this.isAccessibleUrl(tab.id)) {
+                            chrome.tabs.sendMessage(tab.id, {
+                                action: "languageChanged",
+                                language: message.language
+                            }).catch(() => {
+                                // 일부 탭에서 오류가 발생해도 계속 진행
+                            });
+                        }
                     } catch (error) {
                         // 오류 무시
                     }
