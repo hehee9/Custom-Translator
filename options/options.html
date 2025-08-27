@@ -1,0 +1,390 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title data-i18n="optionsPageTitle">Custom Translator 설정</title>
+  <link rel="stylesheet" href="options.css">
+</head>
+<body>
+  <div class="options-container">
+    <!-- 좌측 사이드바 -->
+    <nav class="sidebar">
+      <div class="sidebar-header">
+        <img src="../assets/icon.png" alt="Custom Translator" class="logo">
+        <h2 data-i18n="settingsTitle">Custom Translator 설정</h2>
+      </div>
+      
+      <div class="sidebar-menu">
+        <button class="sidebar-item active" data-target="api-settings" data-i18n="apiSettings">
+          <span class="icon">🔑</span>
+          API 설정
+        </button>
+        
+        <button class="sidebar-item" data-target="usage-statistics" data-i18n="usageStatistics">
+          <span class="icon">📊</span>
+          사용량 통계
+        </button>
+        
+        <button class="sidebar-item" data-target="glossary-management" data-i18n="glossaryManagement">
+          <span class="icon">📚</span>
+          단어장 관리
+        </button>
+        
+        <button class="sidebar-item" data-target="site-settings" data-i18n="siteSettings">
+          <span class="icon">🌐</span>
+          사이트별 설정
+        </button>
+        
+        <button class="sidebar-item" data-target="advanced-settings" data-i18n="advancedSettings">
+          <span class="icon">⚙️</span>
+          고급 설정
+        </button>
+      </div>
+      
+      <div class="sidebar-footer">
+        <button id="showLicenses" class="license-btn" data-i18n="showLicenses">오픈소스 라이선스</button>
+      </div>
+    </nav>
+
+    <!-- 우측 설정 영역 -->
+    <main class="content">
+      <!-- API 설정 섹션 -->
+      <section id="api-settings" class="settings-section active">
+        <h1 data-i18n="apiSettingsTitle">API 설정</h1>
+        
+        <div class="api-provider-tabs">
+          <button id="geminiTab" class="api-tab active">Gemini API</button>
+          <button id="openaiTab" class="api-tab">OpenAI API</button>
+          <button id="cerebrasTab" class="api-tab">Cerebras API</button>
+        </div>
+        
+        <!-- Gemini API 설정 -->
+        <div id="geminiApiSection" class="api-provider-section active">
+          <div class="api-key-section">
+            <h3 data-i18n="geminiApiSettingsTitle">Gemini API 설정</h3>
+            <button id="apiKeyIssue" class="api-issue-btn" data-i18n="apiKeyIssue">Gemini API KEY 발급</button>
+            <div class="api-warning" data-i18n="apiWarning">※유료 계정에 연동 시 요금이 부과됨</div>
+            
+            <div class="api-key-input">
+              <label for="apiKey" data-i18n="apiKeyLabel">API 키</label>
+              <div class="api-key-row">
+                <input type="password" id="apiKey" data-i18n-placeholder="apiKeyPlaceholder" placeholder="Gemini API 키를 입력하세요">
+                <button id="saveApiKey" class="save-btn" data-i18n="save">저장</button>
+              </div>
+              <div id="apiKeyMsg" class="message"></div>
+            </div>
+          </div>
+        </div>
+        
+        <!-- OpenAI API 설정 -->
+        <div id="openaiApiSection" class="api-provider-section">
+          <div class="api-key-section">
+            <h3 data-i18n="openaiApiSettingsTitle">OpenAI API 설정</h3>
+            <button id="openaiKeyIssue" class="api-issue-btn" data-i18n="openaiApiKeyIssue">OpenAI API KEY 발급</button>
+            <div class="api-warning" data-i18n="openaiApiWarning">※OpenAI 유료 계정이 필요합니다</div>
+            
+            <div class="api-key-input">
+              <label for="openaiApiKey" data-i18n="openaiApiKeyLabel">API 키</label>
+              <div class="api-key-row">
+                <input type="password" id="openaiApiKey" data-i18n-placeholder="openaiApiKeyPlaceholder" placeholder="OpenAI API 키를 입력하세요">
+                <button id="saveOpenaiApiKey" class="save-btn" data-i18n="save">저장</button>
+              </div>
+              <div id="openaiKeyMsg" class="message"></div>
+            </div>
+          </div>
+        </div>
+        
+        <!-- Cerebras API 설정 -->
+        <div id="cerebrasApiSection" class="api-provider-section">
+          <div class="api-key-section">
+            <h3 data-i18n="cerebrasApiSettingsTitle">Cerebras API 설정</h3>
+            <button id="cerebrasKeyIssue" class="api-issue-btn" data-i18n="cerebrasApiKeyIssue">Cerebras API KEY 발급</button>
+            <div class="api-warning" data-i18n="cerebrasApiWarning">※모델별로 매일 100만 토큰 무료 지원</div>
+            
+            <div class="api-key-input">
+              <label for="cerebrasApiKey" data-i18n="cerebrasApiKeyLabel">API 키</label>
+              <div class="api-key-row">
+                <input type="password" id="cerebrasApiKey" data-i18n-placeholder="cerebrasApiKeyPlaceholder" placeholder="Cerebras API 키를 입력하세요">
+                <button id="saveCerebrasApiKey" class="save-btn" data-i18n="save">저장</button>
+              </div>
+              <div id="cerebrasKeyMsg" class="message"></div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- 사용량 통계 섹션 -->
+      <section id="usage-statistics" class="settings-section">
+        <h1 data-i18n="usageStatisticsTitle">토큰 사용량 & 비용 통계</h1>
+        
+        <div class="stats-controls">
+          <div class="stats-period-selector">
+            <label for="statsPeriod" data-i18n="periodLabel">기간 선택:</label>
+            <select id="statsPeriod">
+              <option value="today" data-i18n="periodToday">오늘</option>
+              <option value="week" data-i18n="periodWeek">이번 주</option>
+              <option value="month" data-i18n="periodMonth">이번 달</option>
+              <option value="3months" data-i18n="period3Months">최근 3개월</option>
+              <option value="6months" data-i18n="period6Months">최근 6개월</option>
+            </select>
+          </div>
+        </div>
+        
+        <div class="usage-overview">
+          <div class="usage-card">
+            <h3 data-i18n="totalRequests">총 요청</h3>
+            <span id="totalRequests" class="usage-value">0</span>
+          </div>
+          <div class="usage-card">
+            <h3 data-i18n="totalTokens">총 토큰</h3>
+            <span id="totalTokens" class="usage-value">0</span>
+          </div>
+          <div class="usage-card">
+            <h3 data-i18n="totalCost">총 비용</h3>
+            <span id="totalCost" class="usage-value">$0.00</span>
+          </div>
+        </div>
+        
+        <div class="model-breakdown">
+          <h3 data-i18n="modelBreakdown">모델별 사용량</h3>
+          <div id="modelStats" class="model-stats-container">
+            <!-- 모델별 통계가 여기에 추가됩니다 -->
+          </div>
+        </div>
+      </section>
+
+      <!-- 단어장 관리 섹션 -->
+      <section id="glossary-management" class="settings-section">
+        <h1 data-i18n="glossaryManagementTitle">단어장 관리</h1>
+        
+        <div class="glossary-controls">
+          <button id="createNewGlossaryPreset" class="action-btn primary" data-i18n="createNewPreset">새 프리셋 생성</button>
+          <button id="importGlossaryData" class="action-btn secondary" data-i18n="importGlossary">단어장 불러오기</button>
+          
+          <div class="export-dropdown">
+            <button id="exportGlossaryDropdown" class="action-btn secondary dropdown-toggle" data-i18n="exportOptions">내보내기 ▼</button>
+            <div id="exportGlossaryMenu" class="dropdown-menu">
+              <button id="exportActiveGlossaries" data-i18n="exportActive">활성 프리셋 내보내기</button>
+              <button id="exportAllGlossaries" data-i18n="exportAll">모든 프리셋 내보내기</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="glossary-presets-container">
+          <h3 data-i18n="glossaryPresets">단어장 프리셋</h3>
+          <div id="glossaryPresetsList" class="presets-list">
+            <!-- 프리셋 목록이 동적으로 여기에 추가됩니다 -->
+          </div>
+        </div>
+      </section>
+
+      <!-- 사이트별 설정 섹션 -->
+      <section id="site-settings" class="settings-section">
+        <h1 data-i18n="siteSettingsTitle">사이트별 설정</h1>
+        <p data-i18n="siteSettingsDescription">특정 웹사이트에서 자동으로 적용될 단어장 프리셋을 설정할 수 있습니다.</p>
+        
+        <div class="site-settings-controls">
+          <button id="addNewSiteSetting" class="action-btn primary" data-i18n="addSiteSetting">사이트 추가</button>
+          <button id="clearAllSiteConfigs" class="action-btn danger" data-i18n="clearAllSiteSettings">모든 설정 초기화</button>
+        </div>
+
+        <div class="site-settings-container">
+          <div id="siteSettingsList" class="site-settings-list">
+            <!-- 사이트별 설정이 동적으로 여기에 추가됩니다 -->
+          </div>
+        </div>
+      </section>
+
+      <!-- 고급 설정 섹션 -->
+      <section id="advanced-settings" class="settings-section">
+        <h1 data-i18n="advancedSettingsTitle">고급 설정</h1>
+        
+        <div class="settings-group">
+          <h3 data-i18n="dataManagement">데이터 관리</h3>
+          <div class="setting-item">
+            <button id="exportAllData" class="action-btn" data-i18n="exportAllData">모든 데이터 내보내기</button>
+            <p class="setting-description" data-i18n="exportAllDataDesc">설정, 단어장, 사용량 통계를 모두 내보냅니다.</p>
+          </div>
+          <div class="setting-item">
+            <button id="importAllData" class="action-btn" data-i18n="importAllData">데이터 가져오기</button>
+            <p class="setting-description" data-i18n="importAllDataDesc">백업 파일에서 데이터를 복원합니다.</p>
+          </div>
+          <div class="setting-item">
+            <button id="clearAllData" class="action-btn danger" data-i18n="clearAllData">모든 데이터 삭제</button>
+            <p class="setting-description" data-i18n="clearAllDataDesc">모든 설정과 데이터를 초기화합니다. (복구 불가)</p>
+          </div>
+        </div>
+        
+        <div class="settings-group">
+          <h3 data-i18n="about">정보</h3>
+          <div class="setting-item">
+            <p><strong data-i18n="version">버전:</strong> <span id="extensionVersion">1.2.0</span></p>
+            <p><strong data-i18n="developer">개발자:</strong> Hehee</p>
+          </div>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <!-- 모달 다이얼로그들 -->
+  <!-- 프리셋 편집 모달 -->
+  <div id="presetEditModal" class="modal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <div class="modal-title-section">
+          <h3 id="presetModalTitle" data-i18n="editPreset">프리셋 편집</h3>
+        </div>
+        <div class="modal-header-actions">
+          <button id="savePresetBtn" class="btn btn-primary" data-i18n="save">저장</button>
+          <button id="deletePresetBtn" class="btn btn-danger" data-i18n="delete">삭제</button>
+          <button id="closePresetModal" class="close-btn">&times;</button>
+        </div>
+      </div>
+      <div class="modal-body">
+        <div class="form-group">
+          <label data-i18n="presetName">프리셋 이름:</label>
+          <input type="text" id="presetNameInput" placeholder="프리셋 이름을 입력하세요" data-i18n-placeholder="enterPresetName">
+        </div>
+        
+        <div class="form-group">
+          <div class="word-input-row">
+            <input type="text" id="sourceWordInput" placeholder="원본 단어" data-i18n-placeholder="sourceWord">
+            <span class="arrow">→</span>
+            <input type="text" id="targetWordInput" placeholder="번역 단어" data-i18n-placeholder="targetWord">
+            <button id="addWordBtn" class="btn btn-primary" data-i18n="add">추가</button>
+          </div>
+        </div>
+        
+        <div class="form-group">
+          <div class="word-filter-row">
+            <input type="text" id="wordFilterInput" placeholder="🔍 검색" data-i18n-placeholder="search">
+            <select id="wordSortSelect">
+              <option value="recent" data-i18n="sortRecent">최신순</option>
+              <option value="old" data-i18n="sortOld">오래된순</option>
+              <option value="modified" data-i18n="sortModified">수정순</option>
+              <option value="modified_reverse" data-i18n="sortModifiedReverse">수정역순</option>
+              <option value="asc" data-i18n="sortAsc">이름순</option>
+              <option value="desc" data-i18n="sortDesc">이름역순</option>
+            </select>
+          </div>
+        </div>
+        
+        <div class="form-group">
+          <label data-i18n="wordsInPreset">단어 목록:</label>
+          <div id="presetWordsList" class="preset-words-list">
+            <!-- 단어 목록이 동적으로 여기에 추가됩니다 -->
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 사이트 설정 모달 -->
+  <div id="siteSettingModal" class="modal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3 id="siteModalTitle" data-i18n="siteSettingTitle">사이트 설정</h3>
+        <button id="closeSiteModal" class="close-btn">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div class="form-group">
+          <label data-i18n="domainName">도메인:</label>
+          <input type="text" id="siteUrlInput" placeholder="예: example.com" data-i18n-placeholder="domainExample">
+          <p class="help-text" data-i18n="domainHelp">프로토콜(http://)은 제외하고 입력하세요.</p>
+        </div>
+        
+        <div class="form-group">
+          <label data-i18n="selectedPresets">적용할 프리셋:</label>
+          <div id="sitePresetCheckboxes" class="preset-checkboxes">
+            <!-- 프리셋 체크박스들이 동적으로 여기에 추가됩니다 -->
+          </div>
+        </div>
+        
+        <div class="modal-footer">
+          <button id="saveSiteSettingBtn" class="btn btn-primary" data-i18n="save">저장</button>
+          <button id="cancelSiteSettingBtn" class="btn btn-secondary" data-i18n="cancel">취소</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 커스텀 확인 모달들 -->
+  
+  <!-- 일반 확인 모달 -->
+  <div id="customConfirmModal" class="modal custom-dialog">
+    <div class="modal-content dialog-content">
+      <div class="dialog-header">
+        <div class="dialog-icon">
+          <span id="confirmDialogIcon">⚠️</span>
+        </div>
+        <div class="dialog-text">
+          <h3 id="confirmDialogTitle" data-i18n="confirm">확인</h3>
+          <p id="confirmDialogMessage" data-i18n="confirmMessage">정말로 실행하시겠습니까?</p>
+        </div>
+      </div>
+      <div class="dialog-footer">
+        <button id="confirmDialogCancel" class="btn btn-secondary" data-i18n="cancel">취소</button>
+        <button id="confirmDialogConfirm" class="btn btn-primary" data-i18n="confirm">확인</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 변경사항 저장 확인 모달 -->
+  <div id="unsavedChangesModal" class="modal custom-dialog">
+    <div class="modal-content dialog-content">
+      <div class="dialog-header">
+        <div class="dialog-icon">
+          <span>💾</span>
+        </div>
+        <div class="dialog-text">
+          <h3 data-i18n="unsavedChanges">저장되지 않은 변경사항</h3>
+          <p id="unsavedChangesMessage" data-i18n="unsavedChangesMessage">저장되지 않은 변경사항이 있습니다. 어떻게 하시겠습니까?</p>
+        </div>
+      </div>
+      <div class="dialog-footer">
+        <button id="unsavedChangesSave" class="btn btn-primary" data-i18n="saveChanges">저장하고 닫기</button>
+        <button id="unsavedChangesDiscard" class="btn btn-danger" data-i18n="discardChanges">닫기</button>
+        <button id="unsavedChangesCancel" class="btn btn-secondary" data-i18n="cancel">취소</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 알림 모달 -->
+  <div id="customAlertModal" class="modal custom-dialog">
+    <div class="modal-content dialog-content">
+      <div class="dialog-header">
+        <div class="dialog-icon">
+          <span id="alertDialogIcon">ℹ️</span>
+        </div>
+        <div class="dialog-text">
+          <h3 id="alertDialogTitle" data-i18n="notification">알림</h3>
+          <p id="alertDialogMessage" data-i18n="taskCompleted">작업이 완료되었습니다.</p>
+        </div>
+      </div>
+      <div class="dialog-footer">
+        <button id="alertDialogOk" class="btn btn-primary" data-i18n="confirm">확인</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 라이선스 모달 -->
+  <div id="licensesModal" class="modal">
+    <div class="modal-content license-modal-content">
+      <div class="modal-header">
+        <h3 data-i18n="openSourceLicenses">오픈소스 라이선스</h3>
+        <button id="closeLicensesModal" class="close-btn">&times;</button>
+      </div>
+      <div class="modal-body license-modal-body">
+        <div id="licensesContent" class="licenses-content">
+          <!-- 라이선스 내용이 동적으로 로드됩니다 -->
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Scripts -->
+  <script src="../utils/i18n.js"></script>
+  <script src="../utils/storage.js"></script>
+  <script type="module" src="options.js"></script>
+</body>
+</html>

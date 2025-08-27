@@ -67,3 +67,196 @@
     border-color: #d93025;
     background: #fce8e6;
 }
+
+/* 추론 영역 스타일 */
+.thinking-section {
+    margin-bottom: 12px;
+    border: 1px solid #444444;
+    border-radius: 4px;
+    background: #1e1e1e;
+    overflow: hidden;
+}
+
+.thinking-header {
+    padding: 8px 12px;
+    background: #333333;
+    cursor: pointer;
+    user-select: none;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    font-size: 13px;
+    color: #cccccc;
+    border-bottom: 1px solid #444444;
+}
+
+.thinking-header:hover {
+    background: #3a3a3a;
+}
+
+.thinking-toggle {
+    font-family: monospace;
+    font-size: 12px;
+    transition: transform 0.2s ease;
+}
+
+.thinking-toggle.collapsed {
+    transform: rotate(-90deg);
+}
+
+.thinking-content {
+    padding: 10px 12px;
+    font-size: 12px;
+    line-height: 1.4;
+    color: #aaaaaa;
+    background: #1a1a1a;
+    white-space: pre-wrap;
+    word-break: break-word;
+    max-height: 200px;
+    overflow-y: auto;
+    border-top: 1px solid #444444;
+}
+
+.thinking-content.collapsed {
+    display: none;
+}
+
+/* 번역 결과 구분선 */
+.translation-content {
+    padding-top: 0;
+    white-space: pre-wrap; /* 줄바꿈 보존 */
+    word-break: break-word;
+}
+
+.translation-content.has-thinking {
+    padding-top: 0;
+    white-space: pre-wrap; /* 줄바꿈 보존 */
+    word-break: break-word;
+}
+
+/* 번역 정보 컨테이너 */
+.translation-info-container {
+    margin-top: 8px;
+    padding-top: 8px;
+    border-top: 1px solid #444444;
+    font-size: 11px;
+    color: #999999;
+    line-height: 1.3;
+    display: flex !important;
+    flex-direction: row !important;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 8px;
+    transition: all 0.3s ease;
+}
+
+/* 좌측 정보 영역 (토큰 + 프리셋) */
+.left-info {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+/* 토큰 정보 (좌측 상단) */
+.token-info {
+    text-align: left;
+    color: #aaa;
+    font-family: 'Segoe UI', system-ui, sans-serif;
+    font-size: 10px;
+    word-break: break-word;
+}
+
+/* 프리셋 정보 (좌측 하단) */
+.preset-info {
+    text-align: left;
+    color: #4a90e2;
+    font-weight: 500;
+    font-size: 10px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* 우측 복사 버튼 영역 */
+.right-actions {
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    height: 28px; /* 2줄 높이에 맞춤 */
+}
+
+/* 복사 버튼 스타일 */
+.copy-button {
+    background: #393939;
+    color: #ffffff;
+    border: 1px solid #3ab1f4;
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-size: 14px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background-color 0.2s;
+    min-width: 24px;
+    height: 24px;
+}
+
+.copy-button:hover {
+    background: #121212;
+}
+
+.copy-button:active {
+    background: #121212;
+}
+
+.copy-button.success {
+    background: #1a4f2a;
+    color: #4ade80;
+}
+
+.copy-button.error {
+    background: #4f1a1a;
+    color: #f87171;
+}
+
+/* 반응형: 좁은 화면이나 겹침 방지를 위한 세로 배치 */
+.translation-info-container[style*="flex-direction: column"] {
+    align-items: flex-start !important;
+    gap: 4px !important;
+}
+
+.translation-info-container[style*="flex-direction: column"] .left-info {
+    width: 100%;
+}
+
+/* 다크 모드 대응 */
+@media (prefers-color-scheme: light) {
+    .translation-info-container {
+        border-top-color: #e0e0e0;
+        color: #666;
+    }
+    
+    .token-info {
+        color: #666;
+    }
+}
+
+/* 매우 작은 화면 대응 */
+@media (max-width: 480px) {
+    .translation-info-container {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 4px;
+    }
+    
+    .left-info {
+        width: 100%;
+    }
+    
+    .right-actions {
+        align-self: flex-end;
+    }
+}
