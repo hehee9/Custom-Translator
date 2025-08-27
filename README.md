@@ -14,8 +14,8 @@ AI 기반의 번역 확장 프로그램. 단어장 설정으로 특정 단어를
 
 * **다양한 AI 모델 지원:** 
     * **Google Gemini**: 2.0 Flash (기본), 2.5 Flash, 2.5 Pro
-    * **OpenAI**: GPT-4o, GPT-4o Mini, GPT-4 Turbo, GPT-5 Chat, o1-preview, o1-mini
-    * **Cerebras**: Qwen-3-235B Instruct, Qwen-3-235B Thinking (추론 과정 표시)
+    * **OpenAI**: GPT-5 Chat
+    * **Cerebras**: Qwen3 235B A22B Instruct, Qwen3 235B A22B Thinking (추론 과정 표시)
 * **스트림 번역:** 일반적인 번역기에 비해 속도가 느릴 수 있는 점을 감안해 스트림이 적용되어 있습니다. 번역이 전부 완료되지 않아도 번역된 만큼을 즉시 확인할 수 있습니다.
 * **추론 과정 표시:** Cerebras Qwen Thinking 모델 사용 시 AI의 추론 과정을 실시간으로 확인할 수 있습니다.
 * **다중 단어장 프리셋:** 여러 단어장을 생성하고 사이트별로 자동 적용되도록 설정할 수 있습니다.

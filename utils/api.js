@@ -568,8 +568,7 @@ if (!window.APIManager) {
          * @returns {string} 사용할 필드명
          */
         getOpenAITokenField(model) {
-            // GPT-5 시리즈와 o1 시리즈 등 최신 모델들은 max_completion_tokens 사용
-            const newModels = ["gpt-5", "gpt-5-mini", "gpt-5-nano", "gpt-5-chat-latest", "o1", "o1-mini", "o1-preview"];
+            const newModels = ["gpt-5-chat-latest"];
             
             if (newModels.some(newModel => model.includes(newModel))) {
                 return "max_completion_tokens";
